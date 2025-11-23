@@ -1,0 +1,158 @@
+/// Seal 訪問控制策略模組
+/// 整合 Walrus Seal 實現細粒度訪問控制
+module access_policy::access_policy {
+    use sui::object::{Self, UID};
+    use sui::transfer;
+    use sui::tx_context::{Self, TxContext};
+    use sui::event;
+    use std::vector;
+
+    /// 訪問策略結構
+    public struct AccessPolicy has key, store {
+        id: UID,
+        blob_id: vector<u8>,          // Walrus Blob ID
+        owner: address,                // 資源擁有者
+        allowed_readers: vector<address>, // 允許讀取的地址列表
+        allowed_auditors: vector<address>, // 允許審計的地址列表
+        expiry_timestamp: u64,         // 過期時間戳
+        is_active: bool,               // 策略是否激活
+    }
+
+    /// Seal 令牌結構（代表訪問憑證）
+    public struct SealToken has key, store {
+        id: UID,
+        policy_id: address,            // 關聯的策略 ID
+        holder: address,               // 令牌持有者
+        access_type: u8,               // 訪問類型：0=讀取，1=審計
+        granted_at: u64,               // 授予時間
+        expires_at: u64,               // 過期時間
+    }
+
+    // ============ 錯誤代碼 ============
+
+    const E_NOT_OWNER: u64 = 1;
+    const E_POLICY_EXPIRED: u64 = 2;
+    const E_UNAUTHORIZED: u64 = 3;
+    const E_POLICY_INACTIVE: u64 = 4;
+
+    // ============ 事件定義 ============
+
+    public struct PolicyCreated has copy, drop {
+        policy_id: address,
+        blob_id: vector<u8>,
+        owner: address,
+    }
+
+    public struct AccessGranted has copy, drop {
+        token_id: address,
+        policy_id: address,
+        holder: address,
+        access_type: u8,
+    }
+
+    // ============ 公共函數 ============
+
+    /// 創建訪問策略
+    public entry fun create_policy(
+        blob_id: vector<u8>,
+        allowed_readers: vector<address>,
+        allowed_auditors: vector<address>,
+        expiry_timestamp: u64,
+        ctx: &mut TxContext
+    ) {
+        let policy = AccessPolicy {
+            id: object::new(ctx),
+            blob_id,
+            owner: tx_context::sender(ctx),
+            allowed_readers,
+            allowed_auditors,
+            expiry_timestamp,
+            is_active: true,
+        };
+
+        let policy_id = object::uid_to_address(&policy.id);
+
+        event::emit(PolicyCreated {
+            policy_id,
+            blob_id: policy.blob_id,
+            owner: policy.owner,
+        });
+
+        transfer::share_object(policy);
+    }
+
+    /// 授予訪問令牌
+    public entry fun grant_access(
+        policy: &AccessPolicy,
+        recipient: address,
+        access_type: u8,
+        ctx: &mut TxContext
+    ) {
+        // 驗證策略擁有者
+        assert!(policy.owner == tx_context::sender(ctx), E_NOT_OWNER);
+
+        // 驗證策略是否激活
+        assert!(policy.is_active, E_POLICY_INACTIVE);
+
+        // 驗證策略未過期
+        let current_time = tx_context::epoch_timestamp_ms(ctx);
+        assert!(current_time < policy.expiry_timestamp, E_POLICY_EXPIRED);
+
+        let token = SealToken {
+            id: object::new(ctx),
+            policy_id: object::uid_to_address(&policy.id),
+            holder: recipient,
+            access_type,
+            granted_at: current_time,
+            expires_at: policy.expiry_timestamp,
+        };
+
+        let token_id = object::uid_to_address(&token.id);
+
+        event::emit(AccessGranted {
+            token_id,
+            policy_id: object::uid_to_address(&policy.id),
+            holder: recipient,
+            access_type,
+        });
+
+        transfer::transfer(token, recipient);
+    }
+
+    /// 撤銷策略（停用）
+    public entry fun revoke_policy(
+        policy: &mut AccessPolicy,
+        ctx: &mut TxContext
+    ) {
+        assert!(policy.owner == tx_context::sender(ctx), E_NOT_OWNER);
+        policy.is_active = false;
+    }
+
+    // ============ 查詢函數 ============
+
+    /// 驗證訪問權限（視圖函數）
+    public fun verify_access(
+        token: &SealToken,
+        policy: &AccessPolicy,
+        ctx: &TxContext
+    ): bool {
+        let current_time = tx_context::epoch_timestamp_ms(ctx);
+
+        // 檢查令牌是否對應該策略
+        if (token.policy_id != object::uid_to_address(&policy.id)) {
+            return false
+        };
+
+        // 檢查令牌未過期
+        if (current_time >= token.expires_at) {
+            return false
+        };
+
+        // 檢查策略是否激活
+        if (!policy.is_active) {
+            return false
+        };
+
+        true
+    }
+}

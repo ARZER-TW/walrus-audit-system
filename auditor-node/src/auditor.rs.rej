@@ -1,0 +1,17 @@
+--- src/auditor.rs
++++ src/auditor.rs
+@@ -75,12 +75,12 @@
+     /// # 返回
+     /// - `Ok(Auditor)`: 成功創建的審計員實例
+     /// - `Err(AuditorError)`: 初始化失敗
+-    pub fn new(
++    pub async fn new(
+         config: AuditorConfig,
+         auditor_address: String,
+         storage_node_urls: Vec<String>,
+     ) -> Result<Self> {
+         info!("Initializing Auditor for address: {}", auditor_address);
+ 
+         // 創建 Sui 客戶端
+-        let sui_client = AuditSystemClient::new(
++        let sui_client = AuditSystemClient::new(&

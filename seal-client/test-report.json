@@ -1,0 +1,16 @@
+{
+  "blob_id": "test-blob-12345",
+  "blob_object_id": "0x789abc",
+  "auditor": "auditor-node-01",
+  "timestamp": 1700000000,
+  "challenge_epoch": 42,
+  "challenge_results": [],
+  "total_challenges": 100,
+  "successful_verifications": 98,
+  "failed_verifications": 2,
+  "integrity_hash": [170, 187, 204, 221],
+  "pqc_signature": [],
+  "pqc_algorithm": 0,
+  "is_valid": true,
+  "failure_reason": null
+}

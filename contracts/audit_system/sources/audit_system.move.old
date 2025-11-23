@@ -1,0 +1,78 @@
+/// 去中心化存儲完整性審計系統核心模組
+/// 負責審計記錄、挑戰驗證和完整性證明
+module audit_system::audit_system {
+    use sui::object::{Self, UID};
+    use sui::transfer;
+    use sui::tx_context::{Self, TxContext};
+    use sui::event;
+    use std::vector;
+
+    /// 審計記錄結構
+    public struct AuditRecord has key, store {
+        id: UID,
+        blob_id: vector<u8>,          // Walrus Blob ID
+        auditor: address,              // 審計者地址
+        timestamp: u64,                // 審計時間戳
+        integrity_hash: vector<u8>,    // 完整性哈希
+        pqc_signature: vector<u8>,     // 後量子簽名
+        is_valid: bool,                // 驗證結果
+    }
+
+    /// 審計配置
+    public struct AuditConfig has key {
+        id: UID,
+        admin: address,
+        challenge_interval: u64,       // 挑戰間隔（秒）
+        required_auditors: u64,        // 需要的審計者數量
+    }
+
+    // ============ 事件定義 ============
+
+    public struct AuditCreated has copy, drop {
+        record_id: address,
+        blob_id: vector<u8>,
+        auditor: address,
+    }
+
+    // ============ 初始化函數 ============
+
+    fun init(ctx: &mut TxContext) {
+        let config = AuditConfig {
+            id: object::new(ctx),
+            admin: tx_context::sender(ctx),
+            challenge_interval: 3600,  // 1小時
+            required_auditors: 3,
+        };
+        transfer::share_object(config);
+    }
+
+    // ============ 公共函數 ============
+
+    /// 創建審計記錄
+    public entry fun create_audit_record(
+        blob_id: vector<u8>,
+        integrity_hash: vector<u8>,
+        pqc_signature: vector<u8>,
+        ctx: &mut TxContext
+    ) {
+        let record = AuditRecord {
+            id: object::new(ctx),
+            blob_id,
+            auditor: tx_context::sender(ctx),
+            timestamp: tx_context::epoch_timestamp_ms(ctx),
+            integrity_hash,
+            pqc_signature,
+            is_valid: true,
+        };
+
+        let record_id = object::uid_to_address(&record.id);
+
+        event::emit(AuditCreated {
+            record_id,
+            blob_id: record.blob_id,
+            auditor: record.auditor,
+        });
+
+        transfer::share_object(record);
+    }
+}

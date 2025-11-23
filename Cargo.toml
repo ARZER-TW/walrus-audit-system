@@ -1,0 +1,40 @@
+[workspace]
+resolver = "2"
+members = [
+    "auditor-node",
+    "pqc-signer",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Walrus Audit Team"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/your-org/walrus-audit-system"
+
+[workspace.dependencies]
+# 異步運行時
+tokio = { version = "1.35", features = ["full"] }
+# 序列化
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+# 錯誤處理
+anyhow = "1.0"
+thiserror = "1.0"
+# 日誌
+tracing = "0.1"
+tracing-subscriber = "0.3"
+# 密碼學基礎
+rand = "0.8"
+sha3 = "0.10"
+# HTTP 客戶端 (使用 rustls 避免 OpenSSL 依賴)
+reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls"] }
+# Sui SDK (從 Git 倉庫獲取，因為 crates.io 版本不可用)
+sui-sdk = { git = "https://github.com/MystenLabs/sui", rev = "mainnet" }
+sui-types = { git = "https://github.com/MystenLabs/sui", rev = "mainnet" }
+# 後量子密碼學
+pqcrypto-traits = "0.3"
+pqcrypto-falcon = "0.3"
+pqcrypto-dilithium = "0.5"
+# 時間處理
+chrono = "0.4"

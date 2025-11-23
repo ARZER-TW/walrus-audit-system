@@ -1,0 +1,34 @@
+[package]
+name = "pqc-signer"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+# 工作空間依賴
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+rand.workspace = true
+sha3.workspace = true
+
+# 後量子密碼學
+pqcrypto-traits.workspace = true
+pqcrypto-falcon.workspace = true
+pqcrypto-dilithium.workspace = true
+
+# 編碼
+base64 = "0.21"
+hex = "0.4"
+
+# 日誌
+tracing = "0.1"
+
+[dev-dependencies]
+criterion = "0.5"
+
+[lib]
+name = "pqc_signer"
+path = "src/lib.rs"

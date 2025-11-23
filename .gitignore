@@ -1,0 +1,149 @@
+# ============================================
+# Rust
+# ============================================
+# 編譯輸出
+/target/
+**/target/
+
+# Cargo.lock (library 項目通常忽略)
+# Cargo.lock
+
+# 備份文件
+**/*.rs.bk
+
+# ============================================
+# Move / Sui
+# ============================================
+# Move 編譯輸出
+**/build/
+**/Move.lock
+
+# Sui 配置文件（包含私鑰）
+.sui/
+sui.keystore
+
+# ============================================
+# Node.js / TypeScript
+# ============================================
+# 依賴
+node_modules/
+**/node_modules/
+
+# 構建輸出
+dist/
+**/dist/
+build/
+**/build/
+
+# 日誌
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# 覆蓋率報告
+coverage/
+*.lcov
+.nyc_output/
+
+# 測試
+.jest/
+
+# ============================================
+# 環境配置
+# ============================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+
+# 私鑰和密碼學材料
+*.key
+*.pem
+*.p12
+*.pfx
+keystore.json
+secrets/
+
+# ============================================
+# IDE / 編輯器
+# ============================================
+# VSCode
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# ============================================
+# 操作系統
+# ============================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+.directory
+.Trash-*
+
+# ============================================
+# 臨時文件
+# ============================================
+*.log
+*.tmp
+*.temp
+tmp/
+temp/
+
+# 備份
+*.bak
+*.backup
+
+# ============================================
+# 項目特定
+# ============================================
+# 測試數據
+test-data/
+test-output/
+
+# 文檔生成
+docs/_build/
+site/
+
+# 性能基準測試結果
+*.profdata
+*.profraw
+perf.data
+perf.data.old
+
+# 審計節點數據
+audit-data/
+audit-logs/
+
+# Walrus 緩存
+.walrus-cache/

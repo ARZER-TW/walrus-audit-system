@@ -1,0 +1,26 @@
+{
+  "network": "testnet",
+  "deployer": "0xab8e37e25fe9f46493c4c1ef0c548750dae56ca47ed35324c61b9bed574104d9",
+  "deployedAt": "2025-11-23T17:27:18Z",
+  "contracts": {
+    "audit_system": {
+      "packageId": "0x1bc5c277f6c0fd20f97cf555d83ea6f9df753d93fbf99b8890a97df31af21804",
+      "auditConfigId": "0xd12faca845bde47983c02dc6927e8fe24db5a7ac4f0092f72ee0f6839a8e4b21",
+      "auditorRegistryId": "0x3ff5961eae0235665d355293820459a8da4ce564bed87f8680a7552d5553227f",
+      "rewardPoolId": "0x05a8faa074c68db55cd182213e8b972dd0c0fa0aecf5d0c61d0b904453420cbd",
+      "upgradeCapId": "0x5173fe4aca4d75872ba4a9c89ac8c73ebb9acf446c090456fe8b72c293d56102"
+    },
+    "access_policy": {
+      "packageId": "0xbd9d7ce59601fc4a442f8ef8f087b402eab4d66c6acbb5aa9f6251bdde8eed2e",
+      "upgradeCapId": "0xdd06a476eb63997a9a1d5e9e005c0e5e4f40412caaeb1cc01dfe3d812d35a9be"
+    }
+  },
+  "systemObjects": {
+    "clock": "0x6",
+    "systemState": "0x5"
+  },
+  "explorerLinks": {
+    "audit_system": "https://suiscan.xyz/testnet/object/0x1bc5c277f6c0fd20f97cf555d83ea6f9df753d93fbf99b8890a97df31af21804",
+    "access_policy": "https://suiscan.xyz/testnet/object/0xbd9d7ce59601fc4a442f8ef8f087b402eab4d66c6acbb5aa9f6251bdde8eed2e"
+  }
+}
