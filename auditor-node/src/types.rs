@@ -204,6 +204,18 @@ pub struct AuditorConfig {
 
     /// Seal API 端點（可選）
     pub seal_api_url: Option<String>,
+
+    /// Audit System 合約 Package ID
+    pub audit_system_package_id: Option<String>,
+
+    /// Access Policy 合約 Package ID
+    pub access_policy_package_id: Option<String>,
+
+    /// Auditor Registry Object ID
+    pub auditor_registry_id: Option<String>,
+
+    /// Incentives Object ID
+    pub incentives_id: Option<String>,
 }
 
 impl Default for AuditorConfig {
@@ -238,6 +250,10 @@ impl Default for AuditorConfig {
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(false),
             seal_api_url: std::env::var("SEAL_API_URL").ok(),
+            audit_system_package_id: std::env::var("AUDIT_SYSTEM_PACKAGE_ID").ok(),
+            access_policy_package_id: std::env::var("ACCESS_POLICY_PACKAGE_ID").ok(),
+            auditor_registry_id: std::env::var("AUDITOR_REGISTRY_ID").ok(),
+            incentives_id: std::env::var("INCENTIVES_ID").ok(),
         }
     }
 }

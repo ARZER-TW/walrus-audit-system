@@ -416,12 +416,12 @@ async fn execute_audit(
     );
 
     // Convert IntegrityVerifier result to AuditReport format
-    let is_valid = audit_data.status == VerificationStatus::Accessible
+    let is_valid = audit_data.verification_status == VerificationStatus::Accessible
         && audit_data.failed_verifications == 0;
 
     let failure_reason = if !is_valid {
         Some(format!("Verification status: {:?}, failures: {}",
-            audit_data.status,
+            audit_data.verification_status,
             audit_data.failed_verifications
         ))
     } else {

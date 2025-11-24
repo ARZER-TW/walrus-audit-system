@@ -30,12 +30,44 @@ impl Auditor {
     ) -> Result<Self> {
         info!("Initializing Auditor for address: {}", auditor_address);
 
+        // 驗證合約 ID 已配置
+        let audit_package_id = config.audit_system_package_id
+            .as_ref()
+            .ok_or_else(|| AuditorError::Config(
+                "AUDIT_SYSTEM_PACKAGE_ID not configured. Please deploy contracts first.".to_string()
+            ))?;
+
+        let access_policy_id = config.access_policy_package_id
+            .as_ref()
+            .ok_or_else(|| AuditorError::Config(
+                "ACCESS_POLICY_PACKAGE_ID not configured. Please deploy contracts first.".to_string()
+            ))?;
+
+        let registry_id = config.auditor_registry_id
+            .as_ref()
+            .ok_or_else(|| AuditorError::Config(
+                "AUDITOR_REGISTRY_ID not configured. Please deploy contracts first.".to_string()
+            ))?;
+
+        let incentives_obj_id = config.incentives_id
+            .as_ref()
+            .ok_or_else(|| AuditorError::Config(
+                "INCENTIVES_ID not configured. Please deploy contracts first.".to_string()
+            ))?;
+
+        // 檢查是否為 placeholder (0x000...)
+        if audit_package_id.starts_with("0x0000000000000000000000000000") {
+            warn!("⚠️  AUDIT_SYSTEM_PACKAGE_ID is still a placeholder!");
+            warn!("⚠️  Please deploy contracts and update .env file");
+            warn!("⚠️  Some functions may return mock data");
+        }
+
         let sui_client = AuditSystemClient::new(
             &config.sui_rpc_url,
-            "0x0000000000000000000000000000000000000000000000000000000000000000",
-            "0x0000000000000000000000000000000000000000000000000000000000000000",
-            "0x0000000000000000000000000000000000000000000000000000000000000000",
-            "0x0000000000000000000000000000000000000000000000000000000000000000",
+            audit_package_id,
+            access_policy_id,
+            registry_id,
+            incentives_obj_id,
         ).await?;
 
         let storage_clients: Vec<StorageNodeClient> = storage_node_urls

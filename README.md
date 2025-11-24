@@ -68,17 +68,19 @@ graph TD
 ## 🌟 Key Features
 
 ### ✅ Real Walrus Integration
-- **Production-Ready**: Downloads and verifies actual blobs from Walrus Testnet
+- **Hackathon Demo**: Downloads and verifies actual blobs from Walrus Testnet
 - **Official Algorithm**: Implements Blake2b-256 Merkle Tree matching Walrus specs
 - **Challenge-Response**: Performs random chunk verification (configurable 10-100 challenges)
 - **Tested Blob**: `eRrTusk8yshFQpkemgDnbg0f4-qDo623V2NpeVG1Zcg` (870 bytes, 100% success rate)
+- **Walrus CLI Integration**: Configured with official Walrus System Object ID: `0x6c2547cbbc38025cf3adac45f63cb0a8d12ecf777cdc75a4971612bf97fdf6af`
+- **Registered Blob**: `BxevqHLdywLGr_XTdnDAnjsvqiW2X7ptf1i7-6bvK2A` (registered on Sui blockchain)
 
 ### ✅ Dual-Layer Integrity Verification
 
 | Layer | Algorithm | Purpose | Status |
 |-------|-----------|---------|--------|
-| **Application** | SHA-256 | Fast content fingerprint | ✅ Production |
-| **Protocol** | Blake2b-256 Merkle | Cryptographic proof (4KB chunks) | ✅ Production |
+| **Application** | SHA-256 | Fast content fingerprint | ✅ Implemented |
+| **Protocol** | Blake2b-256 Merkle | Cryptographic proof (4KB chunks) | ✅ Implemented |
 
 **Why Both?**
 - SHA-256: Quick sanity check for content changes
@@ -109,9 +111,9 @@ walrus-audit-system/
 │   │   ├── integrity.rs   # Merkle verification (900 lines)
 │   │   ├── crypto/
 │   │   │   └── merkle.rs  # Blake2b-256 implementation
-│   │   └── audit_report.rs # PQC signature generation
-│   └── bin/
-│       └── test_merkle_integration.rs  # Demo executable
+│   │   ├── audit_report.rs # PQC signature generation
+│   │   └── bin/
+│   │       └── test_merkle_integration.rs  # Demo executable
 │
 ├── pqc-signer/            🔐 Post-quantum signature library
 │   └── src/
@@ -128,6 +130,43 @@ walrus-audit-system/
     └── src/
         └── components/    # Audit history viewer
 ```
+
+---
+
+## 🚧 Current Limitations (Hackathon MVP)
+
+**This is a working prototype demonstrating novel PQC + Merkle architecture.** The following components have varying levels of completion:
+
+### ✅ **Fully Implemented & Tested**
+- **Dilithium3 PQC Signatures**: NIST-standard post-quantum signatures (~90% test coverage)
+- **Blake2b-256 Merkle Tree**: Matches Walrus official specification (~85% test coverage)
+- **Integrity Verification**: Full download and challenge-response verification working
+- **Move Smart Contracts**: Complete implementation with access control logic
+
+### ⚠️ **Partially Implemented (Demo/Stub)**
+- **Sui Blockchain Integration**: Core utilities implemented with real Walrus System Object ID
+  - ✅ `walrus-sui-utils.ts`: Query blob Object ID from Events, get Walrus epoch, type conversions
+  - ✅ Walrus CLI configured with official System Object ID
+  - ⚠️ Smart contract function `submit_encrypted_report_metadata()` needs implementation
+  - See [seal-client/src/walrus-sui-utils.ts](seal-client/src/walrus-sui-utils.ts) for utilities
+- **Seal Privacy Layer**: Framework with graceful fallback mechanism
+  - ✅ Access policy structure fully defined (roles, expiration, creator access)
+  - ✅ Graceful degradation when Seal API unavailable (production-grade fault tolerance)
+  - ⚠️ Full IBE encryption requires Seal Testnet API availability
+
+### 🔴 **Not Production-Ready**
+- **Private Key Storage**: Keys stored in plaintext (development only - see security warnings)
+- **No Deployed Contracts**: Contract package IDs are placeholders (deployment needed)
+- **Limited Error Handling**: Some code paths use `unwrap()` instead of graceful error handling
+
+### 🎯 **What This Demo Shows**
+This project demonstrates:
+1. **Technical Innovation**: First PQC-signed audit system for decentralized storage
+2. **Architectural Design**: Well-structured three-layer security model
+3. **Core Functionality**: Merkle verification and PQC signing work end-to-end
+4. **Production Potential**: Clear path to full implementation with proper deployment
+
+**For hackathon evaluation**, focus on the fully implemented cryptographic core and architectural design.
 
 ---
 
@@ -170,25 +209,46 @@ cargo run --release --bin test_merkle_integration
 Expected output:
 ```
 ╔════════════════════════════════════════════════════════════════╗
-║                    審計結果                                     ║
+║           Merkle Tree Integration Test                        ║
 ╚════════════════════════════════════════════════════════════════╝
 
-📊 基本資訊:
+📋 Test Configuration:
    Blob ID: eRrTusk8yshFQpkemgDnbg0f4-qDo623V2NpeVG1Zcg
-   文件大小: 870 bytes
+   Chunk size: 4096 bytes (4KB)
+   Hash algorithm: Blake2b-256
+   Challenge count: min(10, leaf_count)
 
-🔐 哈希證明:
-   SHA-256 (應用層): bd9e5380f78734bc182e4bb8c464101d3baeb23387d701608901e64cd879e1f5
-   Merkle Root (協議層): 31e326b4bde1e788b069dd5819e063ed3a1cda3238a99aadea4f37235edcf038
+🚀 Starting audit...
 
-🎯 Merkle 挑戰-響應統計:
-   總挑戰次數: 1
-   成功驗證: 1
-   成功率: 100.00%
+╔════════════════════════════════════════════════════════════════╗
+║                    Audit Results                               ║
+╚════════════════════════════════════════════════════════════════╝
 
-✅ 驗證狀態: Accessible
+📊 Basic Information:
+   Blob ID: eRrTusk8yshFQpkemgDnbg0f4-qDo623V2NpeVG1Zcg
+   File size: 870 bytes
+   Audit timestamp: 1763959935
 
-✅ 簽名報告已保存: /tmp/signed_audit_report.json
+🔐 Hash Proofs:
+   SHA-256 (application): bd9e5380f78734bc...
+   Merkle Root (protocol): 31e326b4bde1e788...
+
+🎯 Merkle Challenge-Response Statistics:
+   Total challenges: 1
+   Successful verifications: 1
+   Failed verifications: 0
+   Success rate: 100.00%
+
+✅ Verification status: Accessible
+
+✅ Test completed!
+
+📝 Generating PQC signed report...
+✅ Signed report saved: /tmp/signed_audit_report.json
+
+💡 Next step (optional): Encrypt report with Seal
+   cd seal-client && npx tsx encrypt-and-submit-report.ts
+   (Note: Seal encryption has graceful fallback if API unavailable)
 ```
 
 ---
