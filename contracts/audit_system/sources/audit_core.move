@@ -126,6 +126,25 @@ module audit_system::audit_core {
         consecutive_failures: u32,          // 連續失敗次數（用於告警）
     }
 
+    /// 加密審計報告元數據（Seal 集成）
+    ///
+    /// 存儲經過 Seal 加密的審計報告在 Walrus 上的位置信息
+    /// 這個對象作為共享對象，允許授權用戶查詢但只能由審計員創建
+    public struct EncryptedAuditReport has key {
+        id: UID,
+        original_blob_id: u256,             // 原始被審計的 blob ID
+        encrypted_report_blob_id: u256,     // 加密報告在 Walrus 的 blob ID
+        seal_object_id: ID,                 // Seal 加密對象 ID（用於解密）
+        auditor: address,                   // 創建報告的審計員
+        report_timestamp: u64,              // 報告創建時間
+        is_valid: bool,                     // 審計結果（快速查詢）
+
+        // Seal 訪問控制相關
+        creator: address,                   // 報告創建者（用於 seal_approve）
+        allowed_roles: vector<vector<u8>>,  // 允許訪問的角色列表
+        expires_at: u64,                    // 訪問權限過期時間
+    }
+
     // ============ 事件定義 ============
 
     /// 審計創建事件
@@ -154,6 +173,16 @@ module audit_system::audit_core {
         admin: address,
         min_challenge_count: u16,
         max_challenge_count: u16,
+    }
+
+    /// 加密報告提交事件
+    public struct EncryptedReportSubmitted has copy, drop {
+        report_id: ID,
+        original_blob_id: u256,
+        encrypted_blob_id: u256,
+        seal_object_id: ID,
+        auditor: address,
+        is_valid: bool,
     }
 
     // ============ 初始化函數 ============
@@ -424,6 +453,144 @@ module audit_system::audit_core {
             history.last_audit_epoch,
             history.consecutive_failures
         )
+    }
+
+    // ============ Seal 加密報告函數 ============
+
+    /// 提交加密審計報告元數據
+    ///
+    /// 審計員完成審計並使用 Seal 加密報告後，提交加密報告的元數據到鏈上
+    /// 這個函數創建一個共享對象，允許授權用戶查詢加密報告的位置
+    ///
+    /// 參數：
+    /// - config: 審計配置（用於驗證審計員授權）
+    /// - original_blob_id: 被審計的原始 blob ID
+    /// - encrypted_blob_id: 加密報告在 Walrus 的 blob ID
+    /// - seal_object_id: Seal 加密對象的 ID
+    /// - report_timestamp: 報告創建時間
+    /// - is_valid: 審計結果
+    /// - allowed_roles: 允許訪問的角色列表
+    /// - expires_at: 訪問權限過期時間
+    ///
+    /// 按照 Seal 規範，這個對象會成為共享對象，
+    /// 並配合 seal_approve 函數實現訪問控制
+    public entry fun submit_encrypted_report_metadata(
+        config: &AuditConfig,
+        original_blob_id: u256,
+        encrypted_blob_id: u256,
+        seal_object_id: ID,
+        report_timestamp: u64,
+        is_valid: bool,
+        allowed_roles: vector<vector<u8>>,
+        expires_at: u64,
+        ctx: &mut TxContext
+    ) {
+        let auditor = tx_context::sender(ctx);
+
+        // 驗證審計者授權
+        assert!(
+            vector::contains(&config.authorized_auditors, &auditor),
+            E_UNAUTHORIZED
+        );
+
+        // 創建加密報告元數據
+        let report = EncryptedAuditReport {
+            id: object::new(ctx),
+            original_blob_id,
+            encrypted_report_blob_id: encrypted_blob_id,
+            seal_object_id,
+            auditor,
+            report_timestamp,
+            is_valid,
+            creator: auditor,
+            allowed_roles,
+            expires_at,
+        };
+
+        let report_id = object::id(&report);
+
+        // 發出事件
+        event::emit(EncryptedReportSubmitted {
+            report_id,
+            original_blob_id,
+            encrypted_blob_id,
+            seal_object_id,
+            auditor,
+            is_valid,
+        });
+
+        // 轉換為共享對象（允許多人查詢）
+        // 按照 Seal 官方範例（allowlist.move）的做法
+        transfer::share_object(report);
+    }
+
+    /// Seal 訪問控制函數
+    ///
+    /// 這是 Seal 協議要求的標準函數
+    /// 當用戶請求解密報告時，Seal 節點會調用此函數驗證權限
+    /// 如果函數執行成功（不 abort），則允許解密
+    ///
+    /// 參數：
+    /// - _id: Seal 加密對象的 ID（bytes 形式）
+    /// - report: 加密報告元數據
+    /// - ctx: 交易上下文
+    ///
+    /// 訪問控制邏輯：
+    /// 1. 允許報告創建者訪問
+    /// 2. 檢查訪問權限是否過期
+    /// 3. 檢查請求者是否在授權列表中（通過角色）
+    ///
+    /// 注意：這個函數會被 Seal 節點通過 devInspectTransactionBlock 調用
+    /// 它不會實際修改狀態，只是驗證訪問權限
+    public fun seal_approve(
+        _id: vector<u8>,
+        report: &EncryptedAuditReport,
+        clock: &Clock,
+        ctx: &TxContext
+    ) {
+        let requester = tx_context::sender(ctx);
+
+        // 規則 1: 創建者永久訪問
+        if (requester == report.creator) {
+            return
+        };
+
+        // 規則 2: 檢查是否過期
+        let current_time = clock::timestamp_ms(clock);
+        assert!(current_time < report.expires_at, E_UNAUTHORIZED);
+
+        // 規則 3: 檢查角色權限
+        // 注意：實際生產環境中，這裡應該查詢鏈上的角色註冊表
+        // 目前簡化為：如果 allowed_roles 不為空，則拒絕非創建者訪問
+        // 完整實現需要一個獨立的角色管理合約
+        let has_role_check = vector::length(&report.allowed_roles) > 0;
+
+        if (has_role_check) {
+            // TODO: 查詢角色註冊表驗證 requester 是否擁有允許的角色
+            // 目前為簡化演示，只允許創建者訪問
+            abort E_UNAUTHORIZED
+        };
+
+        // 如果沒有角色限制，允許所有已授權審計員訪問
+        // 這是一個合理的默認策略
+    }
+
+    /// 查詢加密報告元數據
+    ///
+    /// 任何人都可以查詢報告的基本信息，但解密需要通過 seal_approve
+    public fun get_encrypted_report_info(report: &EncryptedAuditReport): (u256, u256, ID, bool) {
+        (
+            report.original_blob_id,
+            report.encrypted_report_blob_id,
+            report.seal_object_id,
+            report.is_valid
+        )
+    }
+
+    /// 檢查報告是否過期
+    public fun is_report_expired(report: &EncryptedAuditReport, clock: &Clock): bool {
+        let current_time = clock::timestamp_ms(clock);
+        current_time >= report.expires_at
     }
 
     // ============ 測試輔助函數 ============

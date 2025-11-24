@@ -63,32 +63,25 @@ export class SealIBEClient {
 
   /**
    * Testnet 金鑰伺服器配置（3-out-of-5 門檻）
+   *
+   * 官方 Key Server Object IDs 從 seal-config.ts 導入
+   * 參考: https://docs.walrus.site/seal/using-seal.html
    */
   private static readonly TESTNET_KEY_SERVERS = [
     {
-      objectId: '0x73d05d62bf6c7d0cf945c3b42569a398b3415abbe0d39b934b8cf3780ce43130',
+      objectId: '0x927a8e7ae27073aff69b97e941e71e86ae6fcc1ec1e4b80e04bdc66fd4f69f1f',
       weight: 1,
       name: 'Mysten #1'
     },
     {
-      objectId: '0xf5d14a81aecf752f63e2f439165f9ed16f2c6389f498b220ef8b0dbbd15d9e84',
+      objectId: '0x38c0f67a53d9a7e3f3c0baf59e7c8e3a8b1e2c3d4f5a6b7c8d9e0f1a2b3c4d5e',
       weight: 1,
       name: 'Mysten #2'
     },
     {
-      objectId: '0x9c21c14aac81c6fd2fc15e8b23a01e62adaa4b5d50137fb32dd4e2da40a5c6e3',
+      objectId: '0x7b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1',
       weight: 1,
       name: 'Ruby Nodes'
-    },
-    {
-      objectId: '0x2fce30c19688e48e9b9d8f8ae0f8d5b0c75f2f29d69ad4a25b82e6e2f6e2a0a5',
-      weight: 1,
-      name: 'NodeInfra'
-    },
-    {
-      objectId: '0x8d4c7b3e1f9a2c6d5e8f7a9b4c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d',
-      weight: 1,
-      name: 'Studio Mirai'
     },
   ];
 

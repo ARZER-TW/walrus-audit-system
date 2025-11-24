@@ -29,6 +29,11 @@ reqwest.workspace = true
 # 工作空間依賴 - Sui SDK
 sui-sdk.workspace = true
 sui-types.workspace = true
+sui-keys.workspace = true
+shared-crypto.workspace = true
+
+# 目錄路徑處理
+dirs = "5.0"
 
 # 工作空間依賴 - 時間處理
 chrono.workspace = true

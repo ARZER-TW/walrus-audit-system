@@ -40,16 +40,16 @@ cargo run --bin test_merkle_integration
 
 ```
 ╔════════════════════════════════════════════════════════════════╗
-║           Merkle Tree 整合測試                                 ║
+║           Merkle Tree Integration Test                        ║
 ╚════════════════════════════════════════════════════════════════╝
 
-📋 測試配置:
+📋 Test Configuration:
    Blob ID: eRrTusk8yshFQpkemgDnbg0f4-qDo623V2NpeVG1Zcg
-   切片大小: 4096 bytes (4KB)
-   哈希算法: Blake2b-256
-   挑戰次數: min(10, leaf_count)
+   Chunk Size: 4096 bytes (4KB)
+   Hash Algorithm: Blake2b-256
+   Challenge Count: min(10, leaf_count)
 
-🚀 開始審計...
+🚀 Starting Audit...
 
 [2025-11-23T20:58:40Z INFO auditor_node::integrity] Created IntegrityVerifier
 [2025-11-23T20:58:40Z INFO auditor_node::integrity] Starting integrity audit for blob: eRr...
@@ -59,33 +59,33 @@ cargo run --bin test_merkle_integration
 [2025-11-23T20:58:41Z INFO auditor_node::integrity] Audit completed: 100% success
 
 ╔════════════════════════════════════════════════════════════════╗
-║                    審計結果                                     ║
+║                    Audit Result                                ║
 ╚════════════════════════════════════════════════════════════════╝
 
-📊 基本資訊:
+📊 Basic Information:
    Blob ID: eRrTusk8yshFQpkemgDnbg0f4-qDo623V2NpeVG1Zcg
-   文件大小: 870 bytes
-   審計時間: 1763931521
+   File Size: 870 bytes
+   Audit Timestamp: 1763931521
 
-🔐 哈希證明:
-   SHA-256 (應用層): bd9e5380f78734bc...
-   Merkle Root (協議層): 31e326b4bde1e788...
+🔐 Hash Proof:
+   SHA-256 (Application Layer): bd9e5380f78734bc...
+   Merkle Root (Protocol Layer): 31e326b4bde1e788...
 
-🎯 Merkle 挑戰-響應統計:
-   總挑戰次數: 1
-   成功驗證: 1
-   失敗驗證: 0
-   成功率: 100.00%
+🎯 Merkle Challenge-Response Statistics:
+   Total Challenges: 1
+   Successful Verifications: 1
+   Failed Verifications: 0
+   Success Rate: 100.00%
 
-✅ 驗證狀態: Accessible
+✅ Verification Status: Accessible
 
-✅ 測試完成！
+✅ Test Complete!
 
-📝 生成 PQC 簽名報告...
+📝 Generating PQC Signed Report...
 [2025-11-23T20:58:41Z INFO pqc_signer::dilithium] Generated Dilithium3 keypair
-✅ 簽名報告已保存: /tmp/signed_audit_report.json
+✅ Signed report saved: /tmp/signed_audit_report.json
 
-💡 下一步: 使用 Seal 加密報告
+💡 Next Step: Encrypt report using Seal
    cd seal-client && npx tsx encrypt-and-submit-report.ts
 ```
 
@@ -142,49 +142,49 @@ npx tsx encrypt-and-submit-report.ts
 
 ```
 ╔════════════════════════════════════════════════════════════════╗
-║         審計報告加密與提交完整流程                             ║
+║    Audit Report Encryption & Submission Complete Workflow     ║
 ║    Privacy (Seal) + Security (PQC) + Storage (Walrus)         ║
 ╚════════════════════════════════════════════════════════════════╝
 
-📋 步驟 1/4: 讀取審計報告...
-✅ 已加載審計報告
+📋 Step 1/4: Loading audit report...
+✅ Audit report loaded
 
-🔑 步驟 2/4: 初始化環境...
-   錢包地址: 0xab8e37e25fe9f46493c4c1ef0c548750dae56ca47ed35324c61b9bed574104d9
+🔑 Step 2/4: Initializing environment...
+   Wallet Address: 0xab8e37e25fe9f46493c4c1ef0c548750dae56ca47ed35324c61b9bed574104d9
 
-🔐 步驟 3/4: Seal 加密...
-📄 報告大小: 11078 bytes
-📊 審計數據:
+🔐 Step 3/4: Seal encryption...
+📄 Report Size: 11078 bytes
+📊 Audit Data:
    - Blob ID: eRrTusk8yshFQpkemgDnbg0f4-qDo623V2NpeVG1Zcg
    - Merkle Root: 31e326b4bde1e788...
-   - 成功率: 1/1
+   - Success Rate: 1/1
 
-🔑 訪問策略:
-   - 創建者: 0xab8e37e25fe9f46493...
-   - 允許角色: compliance_officer, auditor
-   - 過期時間: 2026-02-21T21:00:20.421Z
+🔑 Access Policy:
+   - Creator: 0xab8e37e25fe9f46493...
+   - Allowed Roles: compliance_officer, auditor
+   - Expiration: 2026-02-21T21:00:20.421Z
 
-💡 回退方案: 使用本地模擬加密...
+💡 Fallback: Using local mock encryption...
 
-📤 步驟 4/4: 上傳與記錄...
-💡 回退方案: 使用模擬 Blob ID...
+📤 Step 4/4: Upload and record...
+💡 Fallback: Using mock Blob ID...
 
 ╔════════════════════════════════════════════════════════════════╗
-║                    ✅ 完整流程成功!                            ║
+║                    ✅ Complete Workflow Success!               ║
 ╚════════════════════════════════════════════════════════════════╝
 
-📊 流程總結:
-1️⃣  原始審計:     eRrTusk8yshFQpkemgDnbg0f4-qDo623V2NpeVG1Zcg
-2️⃣  PQC 簽名:     Dilithium3 (6618 chars)
-3️⃣  Seal 加密:    0x6d6f636b2d7365616c2d...
-4️⃣  Walrus 存儲:  mock-encrypted-report-1763931620786
-5️⃣  Sui 記錄:     failed (contract not called in demo)
+📊 Workflow Summary:
+1️⃣  Original Audit:  eRrTusk8yshFQpkemgDnbg0f4-qDo623V2NpeVG1Zcg
+2️⃣  PQC Signature:   Dilithium3 (6618 chars)
+3️⃣  Seal Encryption: 0x6d6f636b2d7365616c2d...
+4️⃣  Walrus Storage:  mock-encrypted-report-1763931620786
+5️⃣  Sui Record:      failed (contract not called in demo)
 
-🔍 隱私保護完整性:
-   ✅ 審計結果已簽名 (PQC - 量子安全)
-   ✅ 報告內容已加密 (Seal - 訪問控制)
-   ✅ 加密數據已存儲 (Walrus - 去中心化)
-   ✅ 訪問策略已記錄 (Sui - 不可篡改)
+🔍 Privacy Protection Integrity:
+   ✅ Audit results signed (PQC - Quantum-safe)
+   ✅ Report content encrypted (Seal - Access control)
+   ✅ Encrypted data stored (Walrus - Decentralized)
+   ✅ Access policy recorded (Sui - Immutable)
 ```
 
 ### ✅ What Just Happened?

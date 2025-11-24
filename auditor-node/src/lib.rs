@@ -44,11 +44,13 @@ pub mod config;
 pub mod crypto;
 pub mod error;
 pub mod integrity; // Application-layer integrity verification
-pub mod keystore;
+pub mod keystore; // PQC keystore
 pub mod report;
+pub mod retry; // Network retry with exponential backoff
 pub mod seal_client;
 pub mod storage_node_client;
 pub mod sui_client;
+// pub mod sui_keystore; // Sui keystore integration (暫時禁用,sign_secure 用於交易簽名,不適合審計報告)
 pub mod types;
 
 // Re-export commonly used types

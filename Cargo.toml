@@ -32,6 +32,8 @@ reqwest = { version = "0.11", default-features = false, features = ["json", "rus
 # Sui SDK (從 Git 倉庫獲取,使用 main 分支)
 sui-sdk = { git = "https://github.com/MystenLabs/sui", branch = "main" }
 sui-types = { git = "https://github.com/MystenLabs/sui", branch = "main" }
+sui-keys = { git = "https://github.com/MystenLabs/sui", branch = "main" }
+shared-crypto = { git = "https://github.com/MystenLabs/sui", branch = "main" }
 # 後量子密碼學
 pqcrypto-traits = "0.3"
 pqcrypto-falcon = "0.3"
