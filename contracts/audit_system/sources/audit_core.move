@@ -1,14 +1,14 @@
-/// 去中心化存儲完整性審計系統 - 核心審計邏輯
+/// Decentralized Storage Integrity Audit System - Core Audit Logic
 ///
-/// 本模組負責：
-/// 1. 對 Walrus Blob 執行挑戰-響應驗證
-/// 2. 記錄審計結果並生成後量子簽名
-/// 3. 追蹤 Blob 的完整性歷史
+/// This module is responsible for:
+/// 1. Executing challenge-response verification for Walrus Blobs
+/// 2. Recording audit results and generating post-quantum signatures
+/// 3. Tracking Blob integrity history
 ///
-/// 安全假設：
-/// - Merkle proof 驗證在鏈下完成（gas 成本考量）
-/// - 審計員誠實性通過質押和聲譽機制保證
-/// - PQC 簽名確保審計報告長期可驗證性
+/// Security assumptions:
+/// - Merkle proof verification is completed off-chain (gas cost consideration)
+/// - Auditor honesty is guaranteed through staking and reputation mechanisms
+/// - PQC signatures ensure long-term verifiability of audit reports
 module audit_system::audit_core {
     use sui::object::{Self, UID, ID};
     use sui::transfer;
@@ -19,135 +19,135 @@ module audit_system::audit_core {
     use std::vector;
     use std::option::{Self, Option};
 
-    // ============ 錯誤代碼 ============
+    // ============ Error Codes ============
 
-    /// Blob 尚未被 Walrus 認證
+    /// Blob not yet certified by Walrus
     const E_BLOB_NOT_CERTIFIED: u64 = 1;
 
-    /// Blob 已過期（超過 end_epoch）
+    /// Blob has expired (exceeded end_epoch)
     const E_BLOB_EXPIRED: u64 = 2;
 
-    /// 無效的挑戰次數（必須 > 0）
+    /// Invalid challenge count (must be > 0)
     const E_INVALID_CHALLENGE_COUNT: u64 = 3;
 
-    /// 審計配置不存在或未授權
+    /// Audit configuration does not exist or unauthorized
     const E_UNAUTHORIZED: u64 = 4;
 
-    /// 無效的 PQC 簽名算法類型
+    /// Invalid PQC signature algorithm type
     const E_INVALID_SIGNATURE_ALGORITHM: u64 = 5;
 
-    /// 審計記錄已存在（防止重複提交）
+    /// Audit record already exists (prevent duplicate submission)
     const E_AUDIT_ALREADY_EXISTS: u64 = 6;
 
-    // ============ PQC 簽名算法常量 ============
+    // ============ PQC Signature Algorithm Constants ============
 
-    /// Falcon-512 算法標識
+    /// Falcon-512 algorithm identifier
     const ALGO_FALCON512: u8 = 1;
 
-    /// Dilithium-2 算法標識
+    /// Dilithium-2 algorithm identifier
     const ALGO_DILITHIUM2: u8 = 2;
 
-    // ============ 核心數據結構 ============
+    // ============ Core Data Structures ============
 
-    /// 審計記錄（完整版）
+    /// Audit Record (complete version)
     ///
-    /// 每次審計會創建一個新的 AuditRecord 對象，包含：
-    /// - Blob 標識信息
-    /// - 挑戰-響應統計
-    /// - 完整性證明（哈希 + PQC 簽名）
+    /// Each audit creates a new AuditRecord object containing:
+    /// - Blob identification information
+    /// - Challenge-response statistics
+    /// - Integrity proof (hash + PQC signature)
     public struct AuditRecord has key, store {
         id: UID,
 
-        // === Blob 標識 ===
-        blob_id: u256,                      // Walrus Blob ID（32 bytes Blake2b-256）
-        blob_object_id: ID,                 // Sui Blob 對象 ID（用於查詢 Blob 詳情）
+        // === Blob Identification ===
+        blob_id: u256,                      // Walrus Blob ID (32 bytes Blake2b-256)
+        blob_object_id: ID,                 // Sui Blob object ID (for querying Blob details)
 
-        // === 審計元數據 ===
-        auditor: address,                   // 審計者地址
-        challenge_epoch: u32,               // 執行審計時的 Walrus epoch
-        audit_timestamp: u64,               // 審計時間戳（毫秒）
+        // === Audit Metadata ===
+        auditor: address,                   // Auditor address
+        challenge_epoch: u32,               // Walrus epoch when audit was performed
+        audit_timestamp: u64,               // Audit timestamp (milliseconds)
 
-        // === 挑戰-響應統計 ===
-        total_challenges: u16,              // 發起的總挑戰次數
-        successful_verifications: u16,      // 成功驗證的次數
-        failed_verifications: u16,          // 失敗驗證的次數
+        // === Challenge-Response Statistics ===
+        total_challenges: u16,              // Total number of challenges initiated
+        successful_verifications: u16,      // Number of successful verifications
+        failed_verifications: u16,          // Number of failed verifications
 
-        // === 完整性證明 ===
-        integrity_hash: vector<u8>,         // 所有挑戰的聚合哈希（32 bytes Blake2b-256）
-        pqc_signature: vector<u8>,          // 對 integrity_hash 的 PQC 簽名
-        pqc_algorithm: u8,                  // 簽名算法（1=Falcon512, 2=Dilithium2）
+        // === Integrity Proof ===
+        integrity_hash: vector<u8>,         // Aggregated hash of all challenges (32 bytes Blake2b-256)
+        pqc_signature: vector<u8>,          // PQC signature over integrity_hash
+        pqc_algorithm: u8,                  // Signature algorithm (1=Falcon512, 2=Dilithium2)
 
-        // === 驗證結果 ===
-        is_valid: bool,                     // 審計是否通過
-        failure_reason: Option<vector<u8>>, // 失敗原因（如有）
+        // === Verification Result ===
+        is_valid: bool,                     // Whether audit passed
+        failure_reason: Option<vector<u8>>, // Failure reason (if any)
     }
 
-    /// 審計挑戰（鏈下生成，鏈上記錄）
+    /// Audit Challenge (generated off-chain, recorded on-chain)
     ///
-    /// 每個挑戰包含隨機選擇的 sliver 索引和驗證結果
+    /// Each challenge contains a randomly selected sliver index and verification result
     public struct Challenge has store, drop {
-        sliver_index: u16,                  // Sliver 索引（0 到 n_shards-1）
-        shard_id: u16,                      // Shard ID（對應 storage node）
-        challenge_type: u8,                 // 挑戰類型（1=完整 sliver, 2=recovery symbol）
-        merkle_proof_verified: bool,        // Merkle proof 是否驗證通過
-        response_hash: vector<u8>,          // Storage node 響應數據的哈希
+        sliver_index: u16,                  // Sliver index (0 to n_shards-1)
+        shard_id: u16,                      // Shard ID (corresponding to storage node)
+        challenge_type: u8,                 // Challenge type (1=full sliver, 2=recovery symbol)
+        merkle_proof_verified: bool,        // Whether Merkle proof verification passed
+        response_hash: vector<u8>,          // Hash of storage node response data
     }
 
-    /// 審計配置（全局共享對象）
+    /// Audit Configuration (global shared object)
     ///
-    /// 控制審計系統的全局參數和授權審計者列表
+    /// Controls global parameters of the audit system and authorized auditor list
     public struct AuditConfig has key {
         id: UID,
-        admin: address,                     // 系統管理員
+        admin: address,                     // System administrator
 
-        // === 審計參數 ===
-        min_challenge_count: u16,           // 每次審計的最少挑戰次數
-        max_challenge_count: u16,           // 每次審計的最多挑戰次數
-        challenge_interval_ms: u64,         // 審計間隔（毫秒）
+        // === Audit Parameters ===
+        min_challenge_count: u16,           // Minimum number of challenges per audit
+        max_challenge_count: u16,           // Maximum number of challenges per audit
+        challenge_interval_ms: u64,         // Audit interval (milliseconds)
 
-        // === 授權審計者 ===
-        authorized_auditors: vector<address>, // 授權審計者白名單
-        auditor_stakes: VecMap<address, u64>, // 審計者質押金額
+        // === Authorized Auditors ===
+        authorized_auditors: vector<address>, // Authorized auditor whitelist
+        auditor_stakes: VecMap<address, u64>, // Auditor stake amounts
 
-        // === 統計數據 ===
-        total_audits: u64,                  // 總審計次數
-        total_blobs_audited: u64,           // 已審計 Blob 總數
+        // === Statistics ===
+        total_audits: u64,                  // Total number of audits
+        total_blobs_audited: u64,           // Total number of Blobs audited
     }
 
-    /// Blob 審計歷史索引
+    /// Blob Audit History Index
     ///
-    /// 為每個 Blob 維護一個審計記錄列表
+    /// Maintains an audit record list for each Blob
     public struct BlobAuditHistory has key {
         id: UID,
         blob_id: u256,                      // Blob ID
-        audit_records: vector<ID>,          // 審計記錄 ID 列表
-        last_audit_epoch: u32,              // 最後審計的 epoch
-        total_audits: u32,                  // 總審計次數
-        consecutive_failures: u32,          // 連續失敗次數（用於告警）
+        audit_records: vector<ID>,          // List of audit record IDs
+        last_audit_epoch: u32,              // Last audit epoch
+        total_audits: u32,                  // Total number of audits
+        consecutive_failures: u32,          // Consecutive failure count (for alerts)
     }
 
-    /// 加密審計報告元數據（Seal 集成）
+    /// Encrypted Audit Report Metadata (Seal Integration)
     ///
-    /// 存儲經過 Seal 加密的審計報告在 Walrus 上的位置信息
-    /// 這個對象作為共享對象，允許授權用戶查詢但只能由審計員創建
+    /// Stores location information of Seal-encrypted audit reports on Walrus
+    /// This object serves as a shared object, allowing authorized users to query but only auditors can create
     public struct EncryptedAuditReport has key {
         id: UID,
-        original_blob_id: u256,             // 原始被審計的 blob ID
-        encrypted_report_blob_id: u256,     // 加密報告在 Walrus 的 blob ID
-        seal_object_id: ID,                 // Seal 加密對象 ID（用於解密）
-        auditor: address,                   // 創建報告的審計員
-        report_timestamp: u64,              // 報告創建時間
-        is_valid: bool,                     // 審計結果（快速查詢）
+        original_blob_id: u256,             // Original audited blob ID
+        encrypted_report_blob_id: u256,     // Encrypted report blob ID on Walrus
+        seal_object_id: ID,                 // Seal encryption object ID (for decryption)
+        auditor: address,                   // Auditor who created the report
+        report_timestamp: u64,              // Report creation time
+        is_valid: bool,                     // Audit result (for quick query)
 
-        // Seal 訪問控制相關
-        creator: address,                   // 報告創建者（用於 seal_approve）
-        allowed_roles: vector<vector<u8>>,  // 允許訪問的角色列表
-        expires_at: u64,                    // 訪問權限過期時間
+        // Seal access control related
+        creator: address,                   // Report creator (for seal_approve)
+        allowed_roles: vector<vector<u8>>,  // List of roles allowed to access
+        expires_at: u64,                    // Access permission expiration time
     }
 
-    // ============ 事件定義 ============
+    // ============ Event Definitions ============
 
-    /// 審計創建事件
+    /// Audit Created Event
     public struct AuditCreated has copy, drop {
         audit_record_id: ID,
         blob_id: u256,
@@ -157,7 +157,7 @@ module audit_system::audit_core {
         is_valid: bool,
     }
 
-    /// Blob 審計失敗事件（告警）
+    /// Blob Audit Failed Event (Alert)
     public struct BlobAuditFailed has copy, drop {
         blob_id: u256,
         blob_object_id: ID,
@@ -168,14 +168,14 @@ module audit_system::audit_core {
         failure_reason: vector<u8>,
     }
 
-    /// 審計配置更新事件
+    /// Audit Config Updated Event
     public struct AuditConfigUpdated has copy, drop {
         admin: address,
         min_challenge_count: u16,
         max_challenge_count: u16,
     }
 
-    /// 加密報告提交事件
+    /// Encrypted Report Submitted Event
     public struct EncryptedReportSubmitted has copy, drop {
         report_id: ID,
         original_blob_id: u256,
@@ -185,18 +185,18 @@ module audit_system::audit_core {
         is_valid: bool,
     }
 
-    // ============ 初始化函數 ============
+    // ============ Initialization Functions ============
 
-    /// 模組初始化
+    /// Module Initialization
     ///
-    /// 創建全局 AuditConfig 共享對象
+    /// Creates global AuditConfig shared object
     fun init(ctx: &mut TxContext) {
         let config = AuditConfig {
             id: object::new(ctx),
             admin: tx_context::sender(ctx),
-            min_challenge_count: 10,        // 最少 10 次挑戰
-            max_challenge_count: 100,       // 最多 100 次挑戰
-            challenge_interval_ms: 3600000, // 1 小時
+            min_challenge_count: 10,        // Minimum 10 challenges
+            max_challenge_count: 100,       // Maximum 100 challenges
+            challenge_interval_ms: 3600000, // 1 hour
             authorized_auditors: vector::empty(),
             auditor_stakes: vec_map::empty(),
             total_audits: 0,
@@ -205,11 +205,11 @@ module audit_system::audit_core {
         transfer::share_object(config);
     }
 
-    // ============ 審計者管理函數 ============
+    // ============ Auditor Management Functions ============
 
-    /// 授權審計者
+    /// Authorize Auditor
     ///
-    /// 只有管理員可以調用
+    /// Can only be called by administrator
     public entry fun authorize_auditor(
         config: &mut AuditConfig,
         auditor: address,
@@ -219,7 +219,7 @@ module audit_system::audit_core {
         vector::push_back(&mut config.authorized_auditors, auditor);
     }
 
-    /// 撤銷審計者授權
+    /// Revoke Auditor Authorization
     public entry fun revoke_auditor(
         config: &mut AuditConfig,
         auditor: address,
@@ -232,7 +232,7 @@ module audit_system::audit_core {
         };
     }
 
-    /// 更新審計參數
+    /// Update Audit Parameters
     public entry fun update_audit_params(
         config: &mut AuditConfig,
         min_challenges: u16,
@@ -254,26 +254,26 @@ module audit_system::audit_core {
         });
     }
 
-    // ============ 核心審計函數 ============
+    // ============ Core Audit Functions ============
 
-    /// 提交審計記錄
+    /// Submit Audit Record
     ///
-    /// 審計員在鏈下完成挑戰-響應驗證後，提交審計結果到鏈上
+    /// Auditor submits audit results on-chain after completing challenge-response verification off-chain
     ///
-    /// 參數：
-    /// - blob_id: Walrus Blob ID（u256）
-    /// - blob_object_id: Sui Blob 對象 ID
-    /// - challenge_epoch: 審計時的 Walrus epoch
-    /// - total_challenges: 執行的挑戰總數
-    /// - successful_verifications: 成功驗證次數
-    /// - integrity_hash: 所有挑戰的聚合哈希
-    /// - pqc_signature: PQC 簽名
-    /// - pqc_algorithm: 簽名算法（1=Falcon512, 2=Dilithium2）
+    /// Parameters:
+    /// - blob_id: Walrus Blob ID (u256)
+    /// - blob_object_id: Sui Blob object ID
+    /// - challenge_epoch: Walrus epoch at the time of audit
+    /// - total_challenges: Total number of challenges executed
+    /// - successful_verifications: Number of successful verifications
+    /// - integrity_hash: Aggregated hash of all challenges
+    /// - pqc_signature: PQC signature
+    /// - pqc_algorithm: Signature algorithm (1=Falcon512, 2=Dilithium2)
     ///
-    /// 安全檢查：
-    /// 1. 審計者必須在授權列表中
-    /// 2. 挑戰次數必須在配置範圍內
-    /// 3. PQC 算法必須有效
+    /// Security checks:
+    /// 1. Auditor must be in the authorized list
+    /// 2. Challenge count must be within configured range
+    /// 3. PQC algorithm must be valid
     public entry fun submit_audit_record(
         config: &mut AuditConfig,
         blob_id: u256,
@@ -289,30 +289,30 @@ module audit_system::audit_core {
     ) {
         let auditor = tx_context::sender(ctx);
 
-        // 驗證審計者授權
+        // Verify auditor authorization
         assert!(
             vector::contains(&config.authorized_auditors, &auditor),
             E_UNAUTHORIZED
         );
 
-        // 驗證挑戰次數
+        // Verify challenge count
         assert!(
             total_challenges >= config.min_challenge_count &&
             total_challenges <= config.max_challenge_count,
             E_INVALID_CHALLENGE_COUNT
         );
 
-        // 驗證 PQC 算法
+        // Verify PQC algorithm
         assert!(
             pqc_algorithm == ALGO_FALCON512 || pqc_algorithm == ALGO_DILITHIUM2,
             E_INVALID_SIGNATURE_ALGORITHM
         );
 
-        // 計算失敗次數和驗證結果
+        // Calculate failure count and verification result
         let failed_verifications = total_challenges - successful_verifications;
-        let is_valid = successful_verifications >= (total_challenges * 95 / 100); // 95% 成功率
+        let is_valid = successful_verifications >= (total_challenges * 95 / 100); // 95% success rate
 
-        // 創建審計記錄
+        // Create audit record
         let record = AuditRecord {
             id: object::new(ctx),
             blob_id,
@@ -332,7 +332,7 @@ module audit_system::audit_core {
 
         let record_id = object::id(&record);
 
-        // 發出事件
+        // Emit event
         event::emit(AuditCreated {
             audit_record_id: record_id,
             blob_id,
@@ -342,7 +342,7 @@ module audit_system::audit_core {
             is_valid,
         });
 
-        // 如果審計失敗，發出告警事件
+        // If audit failed, emit alert event
         if (!is_valid) {
             event::emit(BlobAuditFailed {
                 blob_id,
@@ -355,16 +355,16 @@ module audit_system::audit_core {
             });
         };
 
-        // 更新統計
+        // Update statistics
         config.total_audits = config.total_audits + 1;
 
-        // 共享審計記錄（允許其他人讀取）
+        // Share audit record (allow others to read)
         transfer::share_object(record);
     }
 
-    /// 創建 Blob 審計歷史索引
+    /// Create Blob Audit History Index
     ///
-    /// 為新的 Blob 創建審計歷史追蹤對象
+    /// Creates audit history tracking object for new Blob
     public entry fun create_blob_audit_history(
         blob_id: u256,
         ctx: &mut TxContext
@@ -380,9 +380,9 @@ module audit_system::audit_core {
         transfer::share_object(history);
     }
 
-    /// 更新 Blob 審計歷史
+    /// Update Blob Audit History
     ///
-    /// 將新的審計記錄添加到 Blob 的審計歷史中
+    /// Adds new audit record to the Blob's audit history
     public entry fun update_blob_audit_history(
         history: &mut BlobAuditHistory,
         audit_record_id: ID,
@@ -393,7 +393,7 @@ module audit_system::audit_core {
         history.last_audit_epoch = challenge_epoch;
         history.total_audits = history.total_audits + 1;
 
-        // 更新連續失敗計數
+        // Update consecutive failure count
         if (is_valid) {
             history.consecutive_failures = 0;
         } else {
@@ -401,29 +401,29 @@ module audit_system::audit_core {
         };
     }
 
-    // ============ 查詢函數 ============
+    // ============ Query Functions ============
 
-    /// 獲取審計記錄的 Blob ID
+    /// Get Blob ID from audit record
     public fun get_blob_id(record: &AuditRecord): u256 {
         record.blob_id
     }
 
-    /// 獲取審計記錄的驗證結果
+    /// Get verification result from audit record
     public fun is_audit_valid(record: &AuditRecord): bool {
         record.is_valid
     }
 
-    /// 獲取審計者地址
+    /// Get auditor address
     public fun get_auditor(record: &AuditRecord): address {
         record.auditor
     }
 
-    /// 獲取審計時間戳
+    /// Get audit timestamp
     public fun get_audit_timestamp(record: &AuditRecord): u64 {
         record.audit_timestamp
     }
 
-    /// 獲取挑戰統計
+    /// Get challenge statistics
     public fun get_challenge_stats(record: &AuditRecord): (u16, u16, u16) {
         (
             record.total_challenges,
@@ -432,7 +432,7 @@ module audit_system::audit_core {
         )
     }
 
-    /// 獲取完整性證明
+    /// Get integrity proof
     public fun get_integrity_proof(record: &AuditRecord): (vector<u8>, vector<u8>, u8) {
         (
             record.integrity_hash,
@@ -441,12 +441,12 @@ module audit_system::audit_core {
         )
     }
 
-    /// 檢查審計者是否已授權
+    /// Check if auditor is authorized
     public fun is_auditor_authorized(config: &AuditConfig, auditor: address): bool {
         vector::contains(&config.authorized_auditors, &auditor)
     }
 
-    /// 獲取 Blob 審計歷史統計
+    /// Get Blob audit history statistics
     public fun get_blob_audit_stats(history: &BlobAuditHistory): (u32, u32, u32) {
         (
             history.total_audits,
@@ -455,25 +455,25 @@ module audit_system::audit_core {
         )
     }
 
-    // ============ Seal 加密報告函數 ============
+    // ============ Seal Encrypted Report Functions ============
 
-    /// 提交加密審計報告元數據
+    /// Submit Encrypted Audit Report Metadata
     ///
-    /// 審計員完成審計並使用 Seal 加密報告後，提交加密報告的元數據到鏈上
-    /// 這個函數創建一個共享對象，允許授權用戶查詢加密報告的位置
+    /// After auditor completes audit and encrypts report using Seal, submit encrypted report metadata on-chain
+    /// This function creates a shared object allowing authorized users to query the location of encrypted reports
     ///
-    /// 參數：
-    /// - config: 審計配置（用於驗證審計員授權）
-    /// - original_blob_id: 被審計的原始 blob ID
-    /// - encrypted_blob_id: 加密報告在 Walrus 的 blob ID
-    /// - seal_object_id: Seal 加密對象的 ID
-    /// - report_timestamp: 報告創建時間
-    /// - is_valid: 審計結果
-    /// - allowed_roles: 允許訪問的角色列表
-    /// - expires_at: 訪問權限過期時間
+    /// Parameters:
+    /// - config: Audit configuration (for verifying auditor authorization)
+    /// - original_blob_id: Original audited blob ID
+    /// - encrypted_blob_id: Encrypted report blob ID on Walrus
+    /// - seal_object_id: Seal encryption object ID
+    /// - report_timestamp: Report creation time
+    /// - is_valid: Audit result
+    /// - allowed_roles: List of roles allowed to access
+    /// - expires_at: Access permission expiration time
     ///
-    /// 按照 Seal 規範，這個對象會成為共享對象，
-    /// 並配合 seal_approve 函數實現訪問控制
+    /// According to Seal specifications, this object becomes a shared object,
+    /// and works with seal_approve function to implement access control
     public entry fun submit_encrypted_report_metadata(
         config: &AuditConfig,
         original_blob_id: u256,
@@ -487,13 +487,13 @@ module audit_system::audit_core {
     ) {
         let auditor = tx_context::sender(ctx);
 
-        // 驗證審計者授權
+        // Verify auditor authorization
         assert!(
             vector::contains(&config.authorized_auditors, &auditor),
             E_UNAUTHORIZED
         );
 
-        // 創建加密報告元數據
+        // Create encrypted report metadata
         let report = EncryptedAuditReport {
             id: object::new(ctx),
             original_blob_id,
@@ -509,7 +509,7 @@ module audit_system::audit_core {
 
         let report_id = object::id(&report);
 
-        // 發出事件
+        // Emit event
         event::emit(EncryptedReportSubmitted {
             report_id,
             original_blob_id,
@@ -519,29 +519,29 @@ module audit_system::audit_core {
             is_valid,
         });
 
-        // 轉換為共享對象（允許多人查詢）
-        // 按照 Seal 官方範例（allowlist.move）的做法
+        // Convert to shared object (allow multiple people to query)
+        // Following Seal official example (allowlist.move) approach
         transfer::share_object(report);
     }
 
-    /// Seal 訪問控制函數
+    /// Seal Access Control Function
     ///
-    /// 這是 Seal 協議要求的標準函數
-    /// 當用戶請求解密報告時，Seal 節點會調用此函數驗證權限
-    /// 如果函數執行成功（不 abort），則允許解密
+    /// This is the standard function required by Seal protocol
+    /// When users request to decrypt reports, Seal nodes will call this function to verify permissions
+    /// If the function executes successfully (does not abort), decryption is allowed
     ///
-    /// 參數：
-    /// - _id: Seal 加密對象的 ID（bytes 形式）
-    /// - report: 加密報告元數據
-    /// - ctx: 交易上下文
+    /// Parameters:
+    /// - _id: Seal encryption object ID (in bytes form)
+    /// - report: Encrypted report metadata
+    /// - ctx: Transaction context
     ///
-    /// 訪問控制邏輯：
-    /// 1. 允許報告創建者訪問
-    /// 2. 檢查訪問權限是否過期
-    /// 3. 檢查請求者是否在授權列表中（通過角色）
+    /// Access control logic:
+    /// 1. Allow report creator to access
+    /// 2. Check if access permission has expired
+    /// 3. Check if requester is in the authorized list (via roles)
     ///
-    /// 注意：這個函數會被 Seal 節點通過 devInspectTransactionBlock 調用
-    /// 它不會實際修改狀態，只是驗證訪問權限
+    /// Note: This function will be called by Seal nodes via devInspectTransactionBlock
+    /// It does not actually modify state, only verifies access permissions
     public fun seal_approve(
         _id: vector<u8>,
         report: &EncryptedAuditReport,
@@ -550,34 +550,34 @@ module audit_system::audit_core {
     ) {
         let requester = tx_context::sender(ctx);
 
-        // 規則 1: 創建者永久訪問
+        // Rule 1: Creator has permanent access
         if (requester == report.creator) {
             return
         };
 
-        // 規則 2: 檢查是否過期
+        // Rule 2: Check if expired
         let current_time = clock::timestamp_ms(clock);
         assert!(current_time < report.expires_at, E_UNAUTHORIZED);
 
-        // 規則 3: 檢查角色權限
-        // 注意：實際生產環境中，這裡應該查詢鏈上的角色註冊表
-        // 目前簡化為：如果 allowed_roles 不為空，則拒絕非創建者訪問
-        // 完整實現需要一個獨立的角色管理合約
+        // Rule 3: Check role permissions
+        // Note: In production environment, this should query an on-chain role registry
+        // Currently simplified: if allowed_roles is not empty, deny non-creator access
+        // Full implementation requires a separate role management contract
         let has_role_check = vector::length(&report.allowed_roles) > 0;
 
         if (has_role_check) {
-            // TODO: 查詢角色註冊表驗證 requester 是否擁有允許的角色
-            // 目前為簡化演示，只允許創建者訪問
+            // TODO: Query role registry to verify if requester has allowed roles
+            // For simplified demo, only allow creator access
             abort E_UNAUTHORIZED
         };
 
-        // 如果沒有角色限制，允許所有已授權審計員訪問
-        // 這是一個合理的默認策略
+        // If no role restrictions, allow all authorized auditors to access
+        // This is a reasonable default policy
     }
 
-    /// 查詢加密報告元數據
+    /// Query Encrypted Report Metadata
     ///
-    /// 任何人都可以查詢報告的基本信息，但解密需要通過 seal_approve
+    /// Anyone can query basic report information, but decryption requires passing seal_approve
     public fun get_encrypted_report_info(report: &EncryptedAuditReport): (u256, u256, ID, bool) {
         (
             report.original_blob_id,
@@ -587,13 +587,13 @@ module audit_system::audit_core {
         )
     }
 
-    /// 檢查報告是否過期
+    /// Check if report has expired
     public fun is_report_expired(report: &EncryptedAuditReport, clock: &Clock): bool {
         let current_time = clock::timestamp_ms(clock);
         current_time >= report.expires_at
     }
 
-    // ============ 測試輔助函數 ============
+    // ============ Test Helper Functions ============
 
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext) {

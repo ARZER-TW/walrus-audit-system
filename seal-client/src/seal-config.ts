@@ -1,8 +1,8 @@
 /**
- * Seal 配置文件
+ * Seal Configuration File
  *
- * 包含官方 Testnet Key Server Object IDs 和相關配置
- * 參考: https://docs.walrus.site/seal/using-seal.html
+ * Contains official Testnet Key Server Object IDs and related configurations
+ * Reference: https://docs.walrus.site/seal/using-seal.html
  */
 
 export interface SealTestnetKeyServer {
@@ -12,17 +12,17 @@ export interface SealTestnetKeyServer {
 }
 
 /**
- * Seal Testnet 配置
+ * Seal Testnet Configuration
  *
- * Key Server 配置基於官方 Walrus Seal 文檔
- * 使用 3-out-of-5 門檻加密方案
+ * Key Server configuration based on official Walrus Seal documentation
+ * Uses 3-out-of-5 threshold encryption scheme
  */
 export const SEAL_TESTNET_CONFIG = {
   /**
    * Testnet Key Server Object IDs
    *
-   * 這些是 Walrus Seal Testnet 上的官方 Key Server 物件
-   * 由以下組織運營:
+   * These are the official Key Server objects on Walrus Seal Testnet
+   * Operated by the following organizations:
    * - Mysten Labs (#1, #2)
    * - Ruby Nodes
    * - NodeInfra
@@ -35,9 +35,9 @@ export const SEAL_TESTNET_CONFIG = {
   ],
 
   /**
-   * 門檻參數
+   * Threshold Parameters
    *
-   * 3-out-of-5 表示 5 個 Key Server 中需要至少 3 個響應才能解密
+   * 3-out-of-5 means at least 3 out of 5 Key Servers need to respond for decryption
    */
   threshold: 3,
   totalServers: 5,
@@ -48,33 +48,33 @@ export const SEAL_TESTNET_CONFIG = {
   suiRpcUrl: 'https://fullnode.testnet.sui.io:443',
 
   /**
-   * 密鑰封裝機制 (KEM)
+   * Key Encapsulation Mechanism (KEM)
    *
    * 0 = BF-IBE/BLS12-381 (Boneh-Franklin Identity-Based Encryption)
    */
   kemType: 0,
 
   /**
-   * 數據加密機制 (DEM)
+   * Data Encapsulation Mechanism (DEM)
    *
    * 1 = AES-256-GCM
    */
   demType: 1,
 
   /**
-   * Session Key 有效期（秒）
+   * Session Key Time-to-Live (seconds)
    *
-   * 預設 24 小時
+   * Default 24 hours
    */
   sessionKeyTtl: 86400,
 };
 
 /**
- * Seal Mainnet 配置 (暫時保留待正式網上線)
+ * Seal Mainnet Configuration (reserved for mainnet launch)
  */
 export const SEAL_MAINNET_CONFIG = {
   keyServerObjects: [
-    // TODO: 更新為 Mainnet Key Server Object IDs
+    // TODO: Update to Mainnet Key Server Object IDs
   ],
   threshold: 3,
   totalServers: 5,
@@ -85,10 +85,10 @@ export const SEAL_MAINNET_CONFIG = {
 };
 
 /**
- * 獲取 Seal 配置
+ * Get Seal Configuration
  *
- * @param network - 'testnet' 或 'mainnet'
- * @returns Seal 配置物件
+ * @param network - 'testnet' or 'mainnet'
+ * @returns Seal configuration object
  */
 export function getSealConfig(network: 'testnet' | 'mainnet') {
   return network === 'testnet' ? SEAL_TESTNET_CONFIG : SEAL_MAINNET_CONFIG;
