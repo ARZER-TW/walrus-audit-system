@@ -1,56 +1,56 @@
-//! Dilithium3 後量子數字簽名實現
+//! Dilithium3 post-quantum digital signature implementation
 //!
-//! # 關於 Dilithium3
+//! # About Dilithium3
 //!
-//! Dilithium 是 NIST 後量子密碼學標準化競賽中選定的數字簽名方案之一（FIPS 204）。
-//! 我們選擇 Dilithium3 的原因：
+//! Dilithium is one of the digital signature schemes selected in the NIST post-quantum cryptography standardization competition (FIPS 204).
+//! Why we chose Dilithium3:
 //!
-//! ## 安全性
-//! - **NIST 安全級別**: Level 3（相當於 AES-192）
-//! - **量子安全**: 抵抗 Grover 算法（需要 2^160 量子操作破解）
-//! - **數學基礎**: 基於格密碼學（Module-LWE 問題）
-//! - **標準化**: NIST FIPS 204 標準（2024 年正式發布）
+//! ## Security
+//! - **NIST Security Level**: Level 3 (equivalent to AES-192)
+//! - **Quantum-Safe**: Resistant to Grover's algorithm (requires 2^160 quantum operations to break)
+//! - **Mathematical Foundation**: Based on lattice cryptography (Module-LWE problem)
+//! - **Standardization**: NIST FIPS 204 standard (officially published in 2024)
 //!
-//! ## 性能與大小平衡
-//! | 算法 | 公鑰大小 | 簽名大小 | 簽名速度 | 驗證速度 |
-//! |------|---------|---------|---------|---------|
+//! ## Performance and Size Balance
+//! | Algorithm | Public Key Size | Signature Size | Signing Speed | Verification Speed |
+//! |-----------|----------------|----------------|---------------|-------------------|
 //! | Dilithium2 | 1,312 bytes | ~2,420 bytes | ~5 ms | ~1 ms |
 //! | **Dilithium3** | **1,952 bytes** | **~3,293 bytes** | **~7 ms** | **~1.5 ms** |
 //! | Dilithium5 | 2,592 bytes | ~4,595 bytes | ~10 ms | ~2 ms |
 //!
-//! ## 為何選擇 Dilithium3 而非 Dilithium2
-//! 1. **更高的安全邊界**: Level 3 提供更強的量子抗性
-//! 2. **審計場景需求**: 審計報告需要長期保存（10+ 年），需要更高安全級別
-//! 3. **合規要求**: 企業合規通常要求至少 Level 3 安全性
-//! 4. **可接受的性能開銷**: 簽名速度增加 2ms 是可接受的（審計報告生成頻率低）
+//! ## Why Dilithium3 over Dilithium2
+//! 1. **Higher Security Margin**: Level 3 provides stronger quantum resistance
+//! 2. **Audit Scenario Requirements**: Audit reports need long-term preservation (10+ years), requiring higher security level
+//! 3. **Compliance Requirements**: Enterprise compliance typically requires at least Level 3 security
+//! 4. **Acceptable Performance Overhead**: 2ms increase in signing speed is acceptable (audit reports generated infrequently)
 //!
-//! ## 為何不選擇 Dilithium5
-//! - 簽名大小過大（4.6 KB vs 3.3 KB）
-//! - 性能開銷過高（對審計場景而言 Level 3 已足夠）
-//! - 存儲成本增加（每個審計報告多 1.3 KB）
+//! ## Why Not Dilithium5
+//! - Signature size too large (4.6 KB vs 3.3 KB)
+//! - Performance overhead too high (Level 3 is sufficient for audit scenarios)
+//! - Increased storage cost (1.3 KB more per audit report)
 
 use crate::error::{PqcError, Result};
 use crate::traits::Signer;
 use pqcrypto_dilithium::dilithium3;
 use pqcrypto_traits::sign::{PublicKey, SecretKey, SignedMessage};
 
-/// Dilithium3 簽名器
+/// Dilithium3 signer
 ///
-/// # 示例
+/// # Example
 ///
 /// ```rust
 /// use pqc_signer::dilithium::Dilithium3Signer;
 /// use pqc_signer::traits::Signer;
 ///
-/// // 生成密鑰對
+/// // Generate keypair
 /// let mut signer = Dilithium3Signer::new();
 /// signer.generate_keypair().unwrap();
 ///
-/// // 簽名消息
+/// // Sign message
 /// let message = b"Audit report: blob_id=0x1234, success_rate=98%";
 /// let signature = signer.sign(message).unwrap();
 ///
-/// // 驗證簽名
+/// // Verify signature
 /// let is_valid = signer.verify(message, &signature).unwrap();
 /// assert!(is_valid);
 /// ```
@@ -61,9 +61,9 @@ pub struct Dilithium3Signer {
 }
 
 impl Dilithium3Signer {
-    /// 創建新的 Dilithium3 簽名器（未初始化密鑰）
+    /// Create new Dilithium3 signer (keys not initialized)
     ///
-    /// 需要調用 `generate_keypair()` 或 `from_bytes()` 初始化密鑰
+    /// Must call `generate_keypair()` or `from_bytes()` to initialize keys
     pub fn new() -> Self {
         Self {
             public_key: Vec::new(),
@@ -71,16 +71,16 @@ impl Dilithium3Signer {
         }
     }
 
-    /// 從字節恢復密鑰對
+    /// Restore keypair from bytes
     ///
-    /// # 參數
-    /// - `public_key`: 公鑰字節（1952 bytes）
-    /// - `secret_key`: 私鑰字節（4032 bytes）
+    /// # Parameters
+    /// - `public_key`: Public key bytes (1952 bytes)
+    /// - `secret_key`: Secret key bytes (4032 bytes)
     ///
-    /// # 錯誤
-    /// - 如果密鑰長度不正確,返回 `KeyGenerationError`
+    /// # Errors
+    /// - Returns `KeyGenerationError` if key length is incorrect
     pub fn from_bytes(public_key: &[u8], secret_key: &[u8]) -> Result<Self> {
-        // 驗證密鑰長度
+        // Verify key length
         if public_key.len() != dilithium3::public_key_bytes() {
             return Err(PqcError::KeyGenerationError(format!(
                 "Invalid public key length: expected {} bytes, got {}",
@@ -103,54 +103,54 @@ impl Dilithium3Signer {
         })
     }
 
-    /// 從公鑰創建僅用於驗證的 Signer（無簽名能力）
+    /// Create verification-only Signer from public key (no signing capability)
     ///
-    /// # 用途
-    /// 用於需要驗證簽名但不需要簽名能力的場景，例如：
-    /// - 審計報告的驗證
-    /// - 第三方驗證簽名的有效性
-    /// - 不需要存儲私鑰的只讀環境
+    /// # Use Cases
+    /// For scenarios requiring signature verification but not signing capability, such as:
+    /// - Audit report verification
+    /// - Third-party signature validity verification
+    /// - Read-only environments without need to store private keys
     ///
-    /// # 參數
-    /// - `public_key`: 公鑰字節（1952 bytes for Dilithium3）
+    /// # Parameters
+    /// - `public_key`: Public key bytes (1952 bytes for Dilithium3)
     ///
-    /// # 返回
-    /// - 僅包含公鑰的 `Dilithium3Signer` 實例（secret_key 為空）
+    /// # Returns
+    /// - `Dilithium3Signer` instance containing only public key (secret_key is empty)
     ///
-    /// # 錯誤
-    /// - 如果公鑰長度不正確，返回 `KeyGenerationError`
-    /// - 如果公鑰格式無效（無法反序列化），返回 `KeyGenerationError`
+    /// # Errors
+    /// - Returns `KeyGenerationError` if public key length is incorrect
+    /// - Returns `KeyGenerationError` if public key format is invalid (deserialization fails)
     ///
-    /// # 安全性
-    /// - 創建的 Signer **無法執行簽名操作**（私鑰為空）
-    /// - 僅能調用 `verify()` 方法驗證簽名
-    /// - 調用 `sign()` 會返回錯誤
+    /// # Security
+    /// - Created Signer **cannot perform signing operations** (private key is empty)
+    /// - Can only call `verify()` method to verify signatures
+    /// - Calling `sign()` will return an error
     ///
-    /// # 示例
+    /// # Example
     ///
     /// ```rust
     /// use pqc_signer::dilithium::Dilithium3Signer;
     /// use pqc_signer::traits::Signer;
     ///
-    /// // 假設已有公鑰字節
-    /// let public_key: &[u8] = // ... 從某處獲取 ...
+    /// // Assume we have public key bytes
+    /// let public_key: &[u8] = // ... obtained from somewhere ...
     /// # &[0u8; 1952];
     ///
-    /// // 創建僅驗證的 Signer
+    /// // Create verification-only Signer
     /// let verifier = Dilithium3Signer::from_public_key_only(public_key)?;
     ///
-    /// // 可以驗證簽名
+    /// // Can verify signatures
     /// let message = b"Audit report data";
-    /// let signature = // ... 從某處獲取 ...
+    /// let signature = // ... obtained from somewhere ...
     /// # vec![0u8; 100];
     /// let is_valid = verifier.verify(message, &signature)?;
     ///
-    /// // 無法簽名（會返回錯誤）
-    /// // let sig = verifier.sign(message)?; // ← 這會失敗
+    /// // Cannot sign (will return error)
+    /// // let sig = verifier.sign(message)?; // ← This will fail
     /// # Ok::<(), pqc_signer::error::PqcError>(())
     /// ```
     pub fn from_public_key_only(public_key: &[u8]) -> Result<Self> {
-        // 1. 驗證公鑰長度
+        // 1. Verify public key length
         if public_key.len() != dilithium3::public_key_bytes() {
             return Err(PqcError::KeyGenerationError(format!(
                 "Invalid public key length: expected {} bytes, got {}",
@@ -159,7 +159,7 @@ impl Dilithium3Signer {
             )));
         }
 
-        // 2. 驗證公鑰格式（嘗試反序列化）
+        // 2. Verify public key format (attempt deserialization)
         dilithium3::PublicKey::from_bytes(public_key).map_err(|e| {
             PqcError::KeyGenerationError(format!(
                 "Invalid public key format (failed to deserialize): {:?}",
@@ -167,7 +167,7 @@ impl Dilithium3Signer {
             ))
         })?;
 
-        // 3. 創建僅驗證的 Signer
+        // 3. Create verification-only Signer
         tracing::debug!(
             "Created verification-only Dilithium3Signer: pk_len={} bytes (sk=empty)",
             public_key.len()
@@ -175,19 +175,19 @@ impl Dilithium3Signer {
 
         Ok(Self {
             public_key: public_key.to_vec(),
-            secret_key: Vec::new(), // 空私鑰，僅用於驗證
+            secret_key: Vec::new(), // Empty private key, for verification only
         })
     }
 
-    /// 獲取私鑰字節（用於持久化）
+    /// Get secret key bytes (for persistence)
     ///
-    /// # 安全警告
-    /// 私鑰應該安全存儲,不應該通過網路傳輸或記錄到日誌中
+    /// # Security Warning
+    /// Private keys should be stored securely, not transmitted over network or logged
     pub fn secret_key(&self) -> &[u8] {
         &self.secret_key
     }
 
-    /// 返回算法信息
+    /// Return algorithm information
     pub fn algorithm_info() -> AlgorithmInfo {
         AlgorithmInfo {
             name: "Dilithium3",
@@ -206,13 +206,13 @@ impl Default for Dilithium3Signer {
 }
 
 impl Signer for Dilithium3Signer {
-    /// 生成新的 Dilithium3 密鑰對
+    /// Generate new Dilithium3 keypair
     ///
-    /// # 錯誤
-    /// - 密鑰生成失敗時返回 `KeyGenerationError`
+    /// # Errors
+    /// - Returns `KeyGenerationError` when key generation fails
     ///
-    /// # 性能
-    /// - 平均耗時: ~10-20 ms（取決於系統熵源）
+    /// # Performance
+    /// - Average time: ~10-20 ms (depends on system entropy source)
     fn generate_keypair(&mut self) -> Result<()> {
         let (pk, sk) = dilithium3::keypair();
 
@@ -228,20 +228,20 @@ impl Signer for Dilithium3Signer {
         Ok(())
     }
 
-    /// 對消息進行 Dilithium3 簽名
+    /// Sign message with Dilithium3
     ///
-    /// # 參數
-    /// - `message`: 要簽名的消息（任意長度）
+    /// # Parameters
+    /// - `message`: Message to sign (any length)
     ///
-    /// # 返回
-    /// - 簽名字節（~3,293 bytes）
+    /// # Returns
+    /// - Signature bytes (~3,293 bytes)
     ///
-    /// # 錯誤
-    /// - 如果密鑰未初始化,返回 `SigningError`
-    /// - 如果簽名失敗,返回 `SigningError`
+    /// # Errors
+    /// - Returns `SigningError` if keys not initialized
+    /// - Returns `SigningError` if signing fails
     ///
-    /// # 性能
-    /// - 平均耗時: ~7 ms（1 KB 消息）
+    /// # Performance
+    /// - Average time: ~7 ms (1 KB message)
     fn sign(&self, message: &[u8]) -> Result<Vec<u8>> {
         if self.secret_key.is_empty() {
             return Err(PqcError::SigningError(
@@ -249,20 +249,20 @@ impl Signer for Dilithium3Signer {
             ));
         }
 
-        // 從字節重建密鑰
+        // Rebuild key from bytes
         let sk = dilithium3::SecretKey::from_bytes(&self.secret_key).map_err(|e| {
             PqcError::SigningError(format!("Failed to parse secret key: {:?}", e))
         })?;
 
-        // 執行簽名
+        // Execute signing
         let signed_message = dilithium3::sign(message, &sk);
 
-        // pqcrypto-dilithium 返回的是 SignedMessage = [簽名] + [消息]
-        // 我們只需要簽名部分（前 signature_bytes() 字節）用於分離式簽名
+        // pqcrypto-dilithium returns SignedMessage = [signature] + [message]
+        // We only need the signature part (first signature_bytes() bytes) for detached signature
         let signed_bytes = signed_message.as_bytes();
         let sig_len = dilithium3::signature_bytes();
 
-        // 提取純簽名（detached signature）
+        // Extract pure signature (detached signature)
         let detached_signature = &signed_bytes[..sig_len];
 
         tracing::debug!(
@@ -275,22 +275,22 @@ impl Signer for Dilithium3Signer {
         Ok(detached_signature.to_vec())
     }
 
-    /// 驗證 Dilithium3 簽名
+    /// Verify Dilithium3 signature
     ///
-    /// # 參數
-    /// - `message`: 原始消息
-    /// - `signature`: 簽名字節（~3,293 bytes）
+    /// # Parameters
+    /// - `message`: Original message
+    /// - `signature`: Signature bytes (~3,293 bytes)
     ///
-    /// # 返回
-    /// - `Ok(true)`: 簽名有效
-    /// - `Ok(false)`: 簽名無效
-    /// - `Err`: 驗證過程發生錯誤
+    /// # Returns
+    /// - `Ok(true)`: Signature is valid
+    /// - `Ok(false)`: Signature is invalid
+    /// - `Err`: Error occurred during verification
     ///
-    /// # 性能
-    /// - 平均耗時: ~1.5 ms
+    /// # Performance
+    /// - Average time: ~1.5 ms
     ///
-    /// # 注意
-    /// 驗證只需要公鑰,可以在沒有私鑰的環境中執行
+    /// # Note
+    /// Verification only requires public key, can be executed in environments without private key
     fn verify(&self, message: &[u8], signature: &[u8]) -> Result<bool> {
         if self.public_key.is_empty() {
             return Err(PqcError::VerificationError(
@@ -298,18 +298,18 @@ impl Signer for Dilithium3Signer {
             ));
         }
 
-        // 從字節重建公鑰
+        // Rebuild public key from bytes
         let pk = dilithium3::PublicKey::from_bytes(&self.public_key).map_err(|e| {
             PqcError::VerificationError(format!("Failed to parse public key: {:?}", e))
         })?;
 
-        // 我們的 sign() 返回分離式簽名（detached signature）
-        // 需要重建 SignedMessage = [signature] + [message] 才能驗證
+        // Our sign() returns detached signature
+        // Need to rebuild SignedMessage = [signature] + [message] for verification
         let mut signed_message_bytes = Vec::with_capacity(signature.len() + message.len());
         signed_message_bytes.extend_from_slice(signature);
         signed_message_bytes.extend_from_slice(message);
 
-        // 從字節重建 SignedMessage
+        // Rebuild SignedMessage from bytes
         let signed_msg =
             dilithium3::SignedMessage::from_bytes(&signed_message_bytes).map_err(|e| {
                 PqcError::VerificationError(format!(
@@ -318,10 +318,10 @@ impl Signer for Dilithium3Signer {
                 ))
             })?;
 
-        // 執行驗證
+        // Execute verification
         match dilithium3::open(&signed_msg, &pk) {
             Ok(verified_message) => {
-                // 檢查消息是否匹配
+                // Check if message matches
                 let is_valid = verified_message == message;
 
                 tracing::debug!(
@@ -333,39 +333,39 @@ impl Signer for Dilithium3Signer {
                 Ok(is_valid)
             }
             Err(_) => {
-                // 簽名驗證失敗
+                // Signature verification failed
                 tracing::warn!("Dilithium3 signature verification failed");
                 Ok(false)
             }
         }
     }
 
-    /// 獲取公鑰字節
+    /// Get public key bytes
     ///
-    /// # 返回
-    /// - 公鑰字節（1,952 bytes）
+    /// # Returns
+    /// - Public key bytes (1,952 bytes)
     fn public_key(&self) -> &[u8] {
         &self.public_key
     }
 
-    /// 算法名稱
+    /// Algorithm name
     fn algorithm_name(&self) -> &str {
         "Dilithium3"
     }
 }
 
-/// 算法信息結構
+/// Algorithm information structure
 #[derive(Debug, Clone, Copy)]
 pub struct AlgorithmInfo {
-    /// 算法名稱
+    /// Algorithm name
     pub name: &'static str,
-    /// NIST 安全級別
+    /// NIST security level
     pub nist_level: u8,
-    /// 公鑰大小（字節）
+    /// Public key size (bytes)
     pub public_key_size: usize,
-    /// 私鑰大小（字節）
+    /// Secret key size (bytes)
     pub secret_key_size: usize,
-    /// 簽名大小（字節）
+    /// Signature size (bytes)
     pub signature_size: usize,
 }
 
@@ -390,11 +390,11 @@ mod tests {
         let message = b"Test audit report: blob_id=0xABCD, success_rate=98%";
         let signature = signer.sign(message).unwrap();
 
-        // 驗證簽名
+        // Verify signature
         let is_valid = signer.verify(message, &signature).unwrap();
         assert!(is_valid);
 
-        // 驗證錯誤的消息
+        // Verify wrong message
         let wrong_message = b"Tampered message";
         let is_invalid = signer.verify(wrong_message, &signature).unwrap();
         assert!(!is_invalid);
@@ -416,21 +416,21 @@ mod tests {
 
     #[test]
     fn test_from_bytes() {
-        // 生成密鑰對
+        // Generate keypair
         let mut original_signer = Dilithium3Signer::new();
         original_signer.generate_keypair().unwrap();
 
         let pk = original_signer.public_key().to_vec();
         let sk = original_signer.secret_key().to_vec();
 
-        // 從字節恢復
+        // Restore from bytes
         let restored_signer = Dilithium3Signer::from_bytes(&pk, &sk).unwrap();
 
-        // 驗證密鑰相同
+        // Verify keys are the same
         assert_eq!(restored_signer.public_key(), original_signer.public_key());
         assert_eq!(restored_signer.secret_key(), original_signer.secret_key());
 
-        // 驗證可以正常簽名
+        // Verify signing works correctly
         let message = b"test message";
         let signature = restored_signer.sign(message).unwrap();
         let is_valid = restored_signer.verify(message, &signature).unwrap();
@@ -439,7 +439,7 @@ mod tests {
 
     #[test]
     fn test_from_bytes_invalid_length() {
-        let invalid_pk = vec![0u8; 100]; // 錯誤的長度
+        let invalid_pk = vec![0u8; 100]; // Wrong length
         let invalid_sk = vec![0u8; 100];
 
         let result = Dilithium3Signer::from_bytes(&invalid_pk, &invalid_sk);
@@ -474,41 +474,41 @@ mod tests {
 
     #[test]
     fn test_from_public_key_only() {
-        // 生成完整密鑰對
+        // Generate full keypair
         let mut full_signer = Dilithium3Signer::new();
         full_signer.generate_keypair().unwrap();
 
         let message = b"Test message for verification-only signer";
         let signature = full_signer.sign(message).unwrap();
 
-        // 從公鑰創建僅驗證的 Signer
+        // Create verification-only Signer from public key
         let pk = full_signer.public_key();
         let verifier = Dilithium3Signer::from_public_key_only(pk).unwrap();
 
-        // 驗證公鑰相同
+        // Verify public key is the same
         assert_eq!(verifier.public_key(), full_signer.public_key());
 
-        // 驗證私鑰為空
+        // Verify secret key is empty
         assert_eq!(verifier.secret_key().len(), 0);
 
-        // 可以驗證簽名
+        // Can verify signatures
         let is_valid = verifier.verify(message, &signature).unwrap();
         assert!(is_valid, "Verification-only signer should verify signatures");
 
-        // 驗證錯誤消息
+        // Verify wrong message
         let is_invalid = verifier.verify(b"wrong message", &signature).unwrap();
         assert!(!is_invalid, "Should reject invalid signatures");
     }
 
     #[test]
     fn test_from_public_key_only_cannot_sign() {
-        // 創建僅驗證的 Signer
+        // Create verification-only Signer
         let mut full_signer = Dilithium3Signer::new();
         full_signer.generate_keypair().unwrap();
 
         let verifier = Dilithium3Signer::from_public_key_only(full_signer.public_key()).unwrap();
 
-        // 嘗試簽名應該失敗
+        // Attempting to sign should fail
         let result = verifier.sign(b"test message");
         assert!(result.is_err(), "Verification-only signer should not sign");
 
@@ -522,7 +522,7 @@ mod tests {
 
     #[test]
     fn test_from_public_key_only_invalid_length() {
-        // 測試錯誤的公鑰長度
+        // Test incorrect public key length
         let invalid_pk = vec![0u8; 100];
         let result = Dilithium3Signer::from_public_key_only(&invalid_pk);
 
@@ -537,18 +537,18 @@ mod tests {
 
     #[test]
     fn test_from_public_key_only_invalid_format() {
-        // 測試正確長度但格式錯誤的公鑰
+        // Test correct length but invalid format public key
         let invalid_pk = vec![0u8; dilithium3::public_key_bytes()];
         let result = Dilithium3Signer::from_public_key_only(&invalid_pk);
 
-        // 這應該失敗，因為全零不是有效的 Dilithium 公鑰
-        // 注意：pqcrypto-dilithium 可能不驗證這個，取決於實現
-        // 如果測試失敗，說明庫沒有驗證公鑰格式
+        // This should fail because all zeros is not a valid Dilithium public key
+        // Note: pqcrypto-dilithium may not validate this, depends on implementation
+        // If test fails, it means the library doesn't validate public key format
         if let Err(PqcError::KeyGenerationError(msg)) = result {
             assert!(msg.contains("Invalid public key format"));
         } else {
-            // 如果庫接受全零公鑰，至少驗證創建成功
-            // 這是一個已知的限制
+            // If library accepts all-zero public key, at least verify creation succeeded
+            // This is a known limitation
             println!("Warning: pqcrypto-dilithium accepts all-zero public key");
         }
     }

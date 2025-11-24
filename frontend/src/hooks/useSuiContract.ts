@@ -1,8 +1,8 @@
 /**
  * useSuiContract Hook
  *
- * 用於與後端 Sui 合約客戶端交互
- * 提供鏈上合約查詢功能
+ * Used to interact with backend Sui contract client
+ * Provides on-chain contract query functionality
  */
 
 import { useState, useEffect } from 'react';
@@ -10,7 +10,7 @@ import { useState, useEffect } from 'react';
 const SEAL_API_URL = import.meta.env.VITE_SEAL_API_URL || 'http://localhost:3001';
 
 /**
- * Sui 合約測試結果
+ * Sui Contract Test Result
  */
 export interface SuiContractTestResult {
   success: boolean;
@@ -31,7 +31,7 @@ export interface SuiContractTestResult {
 }
 
 /**
- * AuditConfig 數據結構
+ * AuditConfig Data Structure
  */
 export interface AuditConfig {
   admin: string;
@@ -48,7 +48,7 @@ export interface AuditConfig {
 /**
  * useSuiContract Hook
  *
- * 提供 Sui 合約查詢功能
+ * Provides Sui contract query functionality
  */
 export function useSuiContract() {
   const [isConnected, setIsConnected] = useState<boolean>(false);
@@ -57,7 +57,7 @@ export function useSuiContract() {
   const [testResults, setTestResults] = useState<SuiContractTestResult | null>(null);
 
   /**
-   * 測試與後端 Sui 合約客戶端的連接
+   * Test connection to backend Sui contract client
    */
   const testConnection = async (): Promise<SuiContractTestResult | null> => {
     try {
@@ -77,10 +77,10 @@ export function useSuiContract() {
 
       return data;
     } catch (err: any) {
-      const errorMsg = err.message || '連接 Sui 合約客戶端失敗';
+      const errorMsg = err.message || 'Failed to connect to Sui contract client';
       setError(errorMsg);
       setIsConnected(false);
-      console.error('❌ Sui 合約測試失敗:', err);
+      console.error('❌ Sui contract test failed:', err);
       return null;
     } finally {
       setIsLoading(false);
@@ -88,7 +88,7 @@ export function useSuiContract() {
   };
 
   /**
-   * 從測試結果中提取 AuditConfig 數據
+   * Extract AuditConfig data from test results
    */
   const getAuditConfigFromTest = (): AuditConfig | null => {
     if (!testResults || !testResults.results) {
@@ -103,7 +103,7 @@ export function useSuiContract() {
   };
 
   /**
-   * 檢查審計員是否已註冊
+   * Check if auditor is registered
    */
   const isAuditorRegistered = (): boolean | null => {
     if (!testResults || !testResults.results) {
@@ -118,7 +118,7 @@ export function useSuiContract() {
   };
 
   /**
-   * 獲取審計員聲譽分數
+   * Get auditor reputation score
    */
   const getAuditorReputation = (): number | null => {
     if (!testResults || !testResults.results) {
@@ -133,20 +133,20 @@ export function useSuiContract() {
   };
 
   /**
-   * 組件掛載時自動測試連接
+   * Automatically test connection on component mount
    */
   useEffect(() => {
     testConnection();
   }, []);
 
   return {
-    // 狀態
+    // State
     isConnected,
     isLoading,
     error,
     testResults,
 
-    // 方法
+    // Methods
     testConnection,
     getAuditConfigFromTest,
     isAuditorRegistered,

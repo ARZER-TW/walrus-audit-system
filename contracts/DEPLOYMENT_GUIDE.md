@@ -1,54 +1,54 @@
-# Sui Move 合約部署指南
+# Sui Move Contract Deployment Guide
 
-> **文檔目的**: 提供 Walrus Audit System 智能合約的完整部署流程
+> **Document Purpose**: Provide complete deployment process for Walrus Audit System smart contracts
 >
-> **目標網路**: Sui Testnet / Mainnet
+> **Target Network**: Sui Testnet / Mainnet
 >
-> **前置需求**: Sui CLI >= 1.20.0
+> **Prerequisites**: Sui CLI >= 1.20.0
 
 ---
 
-## 📑 目錄
+## 📑 Table of Contents
 
-1. [環境準備](#1-環境準備)
-2. [合約編譯](#2-合約編譯)
-3. [部署流程](#3-部署流程)
-4. [初始化配置](#4-初始化配置)
-5. [驗證部署](#5-驗證部署)
-6. [常見問題](#6-常見問題)
+1. [Environment Setup](#1-environment-setup)
+2. [Contract Compilation](#2-contract-compilation)
+3. [Deployment Process](#3-deployment-process)
+4. [Initialization Configuration](#4-initialization-configuration)
+5. [Deployment Verification](#5-deployment-verification)
+6. [Common Issues](#6-common-issues)
 
 ---
 
-## 1. 環境準備
+## 1. Environment Setup
 
-### 1.1 安裝 Sui CLI
+### 1.1 Install Sui CLI
 
 ```bash
-# 使用官方腳本安裝
+# Install using official script
 curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/MystenLabs/sui/main/scripts/installer.sh | sh
 
-# 驗證安裝
+# Verify installation
 sui --version
 ```
 
-### 1.2 配置網路
+### 1.2 Configure Network
 
 ```bash
-# 切換到 testnet
+# Switch to testnet
 sui client switch --env testnet
 
-# 或連接自定義 RPC
+# Or connect to custom RPC
 sui client new-env --alias custom --rpc https://your-rpc-url
 sui client switch --env custom
 ```
 
-### 1.3 準備地址和 Gas
+### 1.3 Prepare Address and Gas
 
 ```bash
-# 查看當前地址
+# View current address
 sui client active-address
 
-# 獲取測試網代幣（testnet）
+# Get testnet tokens
 curl --location --request POST 'https://faucet.testnet.sui.io/gas' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -57,44 +57,44 @@ curl --location --request POST 'https://faucet.testnet.sui.io/gas' \
     }
 }'
 
-# 檢查餘額
+# Check balance
 sui client gas
 ```
 
 ---
 
-## 2. 合約編譯
+## 2. Contract Compilation
 
-### 2.1 編譯 access_policy 合約
+### 2.1 Compile access_policy Contract
 
 ```bash
 cd contracts/access_policy
 
-# 編譯合約
+# Compile contract
 sui move build
 
-# 檢查輸出
-# 應該看到：BUILDING access_policy
-# 無錯誤（警告可以忽略）
+# Check output
+# Should see: BUILDING access_policy
+# No errors (warnings can be ignored)
 ```
 
-**預期輸出**:
+**Expected Output**:
 ```
 INCLUDING DEPENDENCY Sui
 INCLUDING DEPENDENCY MoveStdlib
 BUILDING access_policy
 ```
 
-### 2.2 編譯 audit_system 合約
+### 2.2 Compile audit_system Contract
 
 ```bash
 cd ../audit_system
 
-# 編譯合約
+# Compile contract
 sui move build
 ```
 
-**預期輸出**:
+**Expected Output**:
 ```
 INCLUDING DEPENDENCY Sui
 INCLUDING DEPENDENCY MoveStdlib
@@ -103,26 +103,26 @@ BUILDING audit_system
 
 ---
 
-## 3. 部署流程
+## 3. Deployment Process
 
-### 3.1 部署 access_policy 合約
+### 3.1 Deploy access_policy Contract
 
-**為什麼先部署 access_policy？**
-- `audit_system` 可能需要引用 `access_policy` 的類型
-- 訪問控制是獨立的基礎設施層
+**Why deploy access_policy first?**
+- `audit_system` may need to reference `access_policy` types
+- Access control is an independent infrastructure layer
 
 ```bash
 cd contracts/access_policy
 
-# 部署合約
+# Deploy contract
 sui client publish --gas-budget 100000000
 
-# 等待交易確認...
+# Wait for transaction confirmation...
 ```
 
-**重要輸出解析**:
+**Important Output Explanation**:
 
-部署成功後，你會看到類似輸出：
+After successful deployment, you will see output similar to:
 
 ```
 ╭──────────────────────────────────────────────────────────╮
@@ -139,14 +139,14 @@ sui client publish --gas-budget 100000000
 │ Status: Success                                                            │
 │ Created Objects:                                                           │
 │  ┌──                                                                       │
-│  │ ObjectID: 0xPACKAGE_ID                                                 │  ← 記錄這個！
+│  │ ObjectID: 0xPACKAGE_ID                                                 │  ← Record this!
 │  │ Version: 1                                                              │
 │  │ Digest: ...                                                             │
 │  │ ObjectType: 0x2::package::Publisher                                    │
 │  └──                                                                       │
 │ Published Objects:                                                         │
 │  ┌──                                                                       │
-│  │ PackageID: 0xACCESS_POLICY_PACKAGE_ID                                 │  ← 最重要！
+│  │ PackageID: 0xACCESS_POLICY_PACKAGE_ID                                 │  ← Most important!
 │  │ Version: 1                                                              │
 │  │ Digest: ...                                                             │
 │  │ Modules: report_access                                                 │
@@ -154,49 +154,49 @@ sui client publish --gas-budget 100000000
 ╰────────────────────────────────────────────────────────────────────────────╯
 ```
 
-**記錄以下信息**:
+**Record the following information**:
 ```bash
-# 保存到環境變量或配置文件
+# Save to environment variables or configuration file
 ACCESS_POLICY_PACKAGE_ID=0xACCESS_POLICY_PACKAGE_ID
 ```
 
-### 3.2 部署 audit_system 合約
+### 3.2 Deploy audit_system Contract
 
 ```bash
 cd ../audit_system
 
-# 部署合約
+# Deploy contract
 sui client publish --gas-budget 100000000
 ```
 
-**記錄輸出**:
+**Record Output**:
 
 ```bash
-# 保存 Package ID
+# Save Package ID
 AUDIT_SYSTEM_PACKAGE_ID=0xAUDIT_SYSTEM_PACKAGE_ID
 
-# 記錄共享對象 ID（AuditConfig）
+# Record shared object ID (AuditConfig)
 AUDIT_CONFIG_OBJECT_ID=0xCONFIG_OBJECT_ID
 ```
 
-**關鍵對象識別**:
-- `AuditConfig`: 合約初始化時創建的共享對象
-- `Publisher`: 用於後續升級合約的權限對象
+**Key Object Identification**:
+- `AuditConfig`: Shared object created during contract initialization
+- `Publisher`: Permission object used for subsequent contract upgrades
 
 ---
 
-## 4. 初始化配置
+## 4. Initialization Configuration
 
-### 4.1 授權審計者
+### 4.1 Authorize Auditors
 
-部署後，管理員需要授權審計者地址：
+After deployment, the administrator needs to authorize auditor addresses:
 
 ```bash
-# 替換以下變量
+# Replace the following variables
 AUDIT_CONFIG_ID="0xYOUR_CONFIG_OBJECT_ID"
 AUDITOR_ADDRESS="0xAUDITOR_ADDRESS"
 
-# 授權審計者
+# Authorize auditor
 sui client call \
   --package $AUDIT_SYSTEM_PACKAGE_ID \
   --module audit_core \
@@ -205,15 +205,15 @@ sui client call \
   --gas-budget 10000000
 ```
 
-**預期結果**:
+**Expected Result**:
 ```
 Status: Success
 ```
 
-### 4.2 更新審計參數（可選）
+### 4.2 Update Audit Parameters (Optional)
 
 ```bash
-# 設定審計參數
+# Set audit parameters
 sui client call \
   --package $AUDIT_SYSTEM_PACKAGE_ID \
   --module audit_core \
@@ -221,16 +221,16 @@ sui client call \
   --args $AUDIT_CONFIG_ID 20 50 7200000 \
   --gas-budget 10000000
 
-# 參數說明：
-# 20: 最少挑戰次數
-# 50: 最多挑戰次數
-# 7200000: 審計間隔（2 小時，單位：毫秒）
+# Parameter explanation:
+# 20: Minimum challenge count
+# 50: Maximum challenge count
+# 7200000: Audit interval (2 hours, in milliseconds)
 ```
 
-### 4.3 創建測試訪問策略
+### 4.3 Create Test Access Policy
 
 ```bash
-# 創建測試策略（需要已有 Blob ID）
+# Create test policy (requires existing Blob ID)
 REPORT_BLOB_ID="0x1234567890abcdef..."  # 32 bytes u256
 AUDIT_RECORD_ID="0xRECORD_ID"
 
@@ -242,28 +242,28 @@ sui client call \
   "[]" "[]" "null" "0xCLOCK_ID" \
   --gas-budget 10000000
 
-# 參數說明：
-# [] 空讀者列表
-# [] 空審計者列表
-# null 永不過期
-# 0x6 是 Clock 共享對象 ID（固定）
+# Parameter explanation:
+# [] Empty readers list
+# [] Empty auditors list
+# null Never expires
+# 0x6 is Clock shared object ID (fixed)
 ```
 
 ---
 
-## 5. 驗證部署
+## 5. Deployment Verification
 
-### 5.1 查詢合約對象
+### 5.1 Query Contract Objects
 
 ```bash
-# 查看 audit_system 包信息
+# View audit_system package information
 sui client object $AUDIT_SYSTEM_PACKAGE_ID
 
-# 查看 AuditConfig 對象
+# View AuditConfig object
 sui client object $AUDIT_CONFIG_OBJECT_ID --json | jq .data.content.fields
 ```
 
-**預期輸出**:
+**Expected Output**:
 ```json
 {
   "admin": "0xYOUR_ADDRESS",
@@ -276,18 +276,18 @@ sui client object $AUDIT_CONFIG_OBJECT_ID --json | jq .data.content.fields
 }
 ```
 
-### 5.2 測試合約調用
+### 5.2 Test Contract Calls
 
-創建一個測試審計記錄：
+Create a test audit record:
 
 ```bash
-# 準備測試數據
-BLOB_ID="115792089237316195423570985008687907853269984665640564039457584007913129639935"  # u256 示例
+# Prepare test data
+BLOB_ID="115792089237316195423570985008687907853269984665640564039457584007913129639935"  # u256 example
 BLOB_OBJECT_ID="0x0000000000000000000000000000000000000000000000000000000000000001"
 INTEGRITY_HASH="0x$(echo -n 'test_hash' | sha256sum | cut -d' ' -f1)"
-PQC_SIGNATURE="0x$(openssl rand -hex 128)"  # Falcon-512 簽名 ~666 bytes
+PQC_SIGNATURE="0x$(openssl rand -hex 128)"  # Falcon-512 signature ~666 bytes
 
-# 提交審計記錄（需要先授權審計者）
+# Submit audit record (requires authorized auditor)
 sui client call \
   --package $AUDIT_SYSTEM_PACKAGE_ID \
   --module audit_core \
@@ -305,23 +305,23 @@ sui client call \
     "0x6" \
   --gas-budget 20000000
 
-# 參數說明：
+# Parameter explanation:
 # 100: challenge_epoch
 # 50: total_challenges
 # 48: successful_verifications
 # 1: pqc_algorithm (Falcon-512)
-# 0x6: Clock 對象 ID
+# 0x6: Clock object ID
 ```
 
-### 5.3 查詢事件
+### 5.3 Query Events
 
 ```bash
-# 查詢 AuditCreated 事件
+# Query AuditCreated events
 sui client events \
   --query "{\"MoveEventType\":\"$AUDIT_SYSTEM_PACKAGE_ID::audit_core::AuditCreated\"}" \
   --limit 10
 
-# 查詢 PolicyCreated 事件
+# Query PolicyCreated events
 sui client events \
   --query "{\"MoveEventType\":\"$ACCESS_POLICY_PACKAGE_ID::report_access::PolicyCreated\"}" \
   --limit 10
@@ -329,111 +329,111 @@ sui client events \
 
 ---
 
-## 6. 常見問題
+## 6. Common Issues
 
-### Q1: 編譯失敗 - "dependency not found"
+### Q1: Compilation Failed - "dependency not found"
 
-**問題**:
+**Problem**:
 ```
 error: dependency 'Sui' not found
 ```
 
-**解決方案**:
+**Solution**:
 ```bash
-# 清理緩存
+# Clean cache
 rm -rf ~/.move
 
-# 重新編譯
+# Recompile
 sui move build
 ```
 
-### Q2: Gas 不足
+### Q2: Insufficient Gas
 
-**問題**:
+**Problem**:
 ```
 InsufficientGas
 ```
 
-**解決方案**:
+**Solution**:
 ```bash
-# 增加 gas-budget
+# Increase gas-budget
 sui client publish --gas-budget 200000000
 
-# 或獲取更多測試網代幣
+# Or get more testnet tokens
 curl --location --request POST 'https://faucet.testnet.sui.io/gas' ...
 ```
 
-### Q3: 部署後找不到 Package ID
+### Q3: Cannot Find Package ID After Deployment
 
-**解決方案**:
+**Solution**:
 
-部署成功後立即保存輸出：
+Save output immediately after successful deployment:
 
 ```bash
-# 部署時重定向輸出
+# Redirect output during deployment
 sui client publish --gas-budget 100000000 > deployment_output.txt
 
-# 從輸出提取 Package ID
+# Extract Package ID from output
 cat deployment_output.txt | grep "PackageID:"
 ```
 
-或查詢歷史交易：
+Or query transaction history:
 
 ```bash
-# 查詢最近的交易
+# Query recent transactions
 sui client transactions --address $(sui client active-address) --limit 1
 ```
 
-### Q4: 合約升級
+### Q4: Contract Upgrade
 
-**重要**: 默認部署的合約是不可變的（immutable）。
+**Important**: Contracts deployed by default are immutable.
 
-如果需要可升級合約，使用 `UpgradeCap`：
+If you need upgradeable contracts, use `UpgradeCap`:
 
 ```bash
-# 部署時會自動創建 UpgradeCap
-# 記錄 UpgradeCap Object ID
+# UpgradeCap is automatically created during deployment
+# Record UpgradeCap Object ID
 
-# 升級合約
+# Upgrade contract
 sui client upgrade \
   --upgrade-capability $UPGRADE_CAP_ID \
   --gas-budget 100000000
 ```
 
-### Q5: 如何連接到 Mainnet？
+### Q5: How to Connect to Mainnet?
 
 ```bash
-# 切換到 mainnet
+# Switch to mainnet
 sui client switch --env mainnet
 
-# 確認網路
+# Confirm network
 sui client active-env
 
-# 檢查餘額（mainnet 需要真實 SUI）
+# Check balance (mainnet requires real SUI)
 sui client gas
 ```
 
 ---
 
-## 📋 部署檢查清單
+## 📋 Deployment Checklist
 
-完成部署後，確認以下項目：
+After completing deployment, confirm the following items:
 
-- [ ] `access_policy` 合約成功部署
-- [ ] `audit_system` 合約成功部署
-- [ ] 記錄兩個 Package ID
-- [ ] 記錄 AuditConfig 共享對象 ID
-- [ ] 至少授權一個審計者地址
-- [ ] 能夠成功調用 `submit_audit_record`
-- [ ] 能夠查詢到 `AuditCreated` 事件
-- [ ] 將 Package ID 更新到 `.env` 文件
-- [ ] 將配置信息提交到 Git（不包括私鑰）
+- [ ] `access_policy` contract successfully deployed
+- [ ] `audit_system` contract successfully deployed
+- [ ] Record both Package IDs
+- [ ] Record AuditConfig shared object ID
+- [ ] Authorize at least one auditor address
+- [ ] Successfully call `submit_audit_record`
+- [ ] Query `AuditCreated` events
+- [ ] Update Package IDs in `.env` file
+- [ ] Commit configuration to Git (excluding private keys)
 
 ---
 
-## 📝 環境變量模板
+## 📝 Environment Variables Template
 
-創建 `.env.deployment` 文件：
+Create `.env.deployment` file:
 
 ```bash
 # Sui Network
@@ -457,25 +457,25 @@ SYSTEM_STATE_OBJECT_ID=0x5
 
 ---
 
-## 🔗 相關資源
+## 🔗 Related Resources
 
-- [Sui Move 文檔](https://docs.sui.io/build/move)
-- [Sui CLI 參考](https://docs.sui.io/references/cli)
-- [Walrus 文檔](https://docs.walrus.site/)
-- [項目主文檔](../README.md)
-- [Walrus 鏈上集成指南](./audit_system/docs/walrus_onchain_integration.md)
-
----
-
-## 🆘 獲得幫助
-
-如果遇到問題：
-
-1. 檢查 Sui CLI 版本：`sui --version`
-2. 查看詳細日誌：添加 `--verbose` 標記
-3. 驗證網路連接：`sui client objects`
-4. 提交 Issue：[GitHub Issues](https://github.com/your-org/walrus-audit-system/issues)
+- [Sui Move Documentation](https://docs.sui.io/build/move)
+- [Sui CLI Reference](https://docs.sui.io/references/cli)
+- [Walrus Documentation](https://docs.walrus.site/)
+- [Project Main Documentation](../README.md)
+- [Walrus On-chain Integration Guide](./audit_system/docs/walrus_onchain_integration.md)
 
 ---
 
-**部署成功後，繼續查看 [QUICKSTART.md](../QUICKSTART.md) 運行審計節點！** 🚀
+## 🆘 Getting Help
+
+If you encounter issues:
+
+1. Check Sui CLI version: `sui --version`
+2. View detailed logs: Add `--verbose` flag
+3. Verify network connection: `sui client objects`
+4. Submit Issue: [GitHub Issues](https://github.com/your-org/walrus-audit-system/issues)
+
+---
+
+**After successful deployment, continue with [QUICKSTART.md](../QUICKSTART.md) to run the audit node!** 🚀

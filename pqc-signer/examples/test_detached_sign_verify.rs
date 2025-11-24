@@ -1,61 +1,61 @@
-//! 測試 Dilithium3Signer 的分離式簽名和驗證
+//! Test Dilithium3Signer detached signature and verification
 
 use pqc_signer::{Dilithium3Signer, Signer};
 
 fn main() {
-    println!("=== 測試 Dilithium3Signer 分離式簽名/驗證 ===\n");
+    println!("=== Testing Dilithium3Signer Detached Signature/Verification ===\n");
 
-    // 1. 生成密鑰
+    // 1. Generate keys
     let mut signer = Dilithium3Signer::new();
     signer.generate_keypair().unwrap();
 
-    println!("✓ 生成密鑰對");
-    println!("  公鑰長度: {} bytes", signer.public_key().len());
-    println!("  私鑰長度: {} bytes", signer.secret_key().len());
+    println!("✓ Generated keypair");
+    println!("  Public key length: {} bytes", signer.public_key().len());
+    println!("  Secret key length: {} bytes", signer.secret_key().len());
     println!();
 
-    // 2. 簽名消息
+    // 2. Sign message
     let message = b"Test message for detached signature";
     let signature = signer.sign(message).unwrap();
 
-    println!("✓ 簽名完成");
-    println!("  消息長度: {} bytes", message.len());
-    println!("  簽名長度: {} bytes", signature.len());
+    println!("✓ Signing complete");
+    println!("  Message length: {} bytes", message.len());
+    println!("  Signature length: {} bytes", signature.len());
     println!();
 
-    // 3. 驗證簽名（使用同一個 signer）
-    println!("步驟: 用同一 signer 驗證...");
+    // 3. Verify signature (using same signer)
+    println!("Step: Verify with same signer...");
     match signer.verify(message, &signature) {
-        Ok(true) => println!("✓ 驗證成功（同一 signer）"),
-        Ok(false) => println!("✗ 驗證失敗（同一 signer）"),
-        Err(e) => println!("✗ 驗證錯誤: {:?}", e),
+        Ok(true) => println!("✓ Verification successful (same signer)"),
+        Ok(false) => println!("✗ Verification failed (same signer)"),
+        Err(e) => println!("✗ Verification error: {:?}", e),
     }
     println!();
 
-    // 4. 用僅公鑰的 verifier 驗證
-    println!("步驟: 創建僅公鑰 verifier...");
+    // 4. Verify with public-key-only verifier
+    println!("Step: Create public-key-only verifier...");
     let pk = signer.public_key().to_vec();
     let verifier = Dilithium3Signer::from_public_key_only(&pk).unwrap();
 
-    println!("✓ 創建驗證器");
-    println!("  公鑰長度: {} bytes", verifier.public_key().len());
-    println!("  私鑰長度: {} bytes (應該為 0)", verifier.secret_key().len());
+    println!("✓ Created verifier");
+    println!("  Public key length: {} bytes", verifier.public_key().len());
+    println!("  Secret key length: {} bytes (should be 0)", verifier.secret_key().len());
     println!();
 
-    println!("步驟: 用僅公鑰 verifier 驗證...");
+    println!("Step: Verify with public-key-only verifier...");
     match verifier.verify(message, &signature) {
-        Ok(true) => println!("✓ 驗證成功（僅公鑰 verifier）"),
-        Ok(false) => println!("✗ 驗證失敗（僅公鑰 verifier）"),
-        Err(e) => println!("✗ 驗證錯誤: {:?}", e),
+        Ok(true) => println!("✓ Verification successful (public-key-only verifier)"),
+        Ok(false) => println!("✗ Verification failed (public-key-only verifier)"),
+        Err(e) => println!("✗ Verification error: {:?}", e),
     }
     println!();
 
-    // 5. 測試錯誤消息
-    println!("步驟: 測試錯誤消息...");
+    // 5. Test wrong message
+    println!("Step: Test wrong message...");
     let wrong_message = b"Wrong message";
     match verifier.verify(wrong_message, &signature) {
-        Ok(false) => println!("✓ 正確: 錯誤消息被拒絕"),
-        Ok(true) => println!("✗ 嚴重錯誤: 錯誤消息被接受!"),
-        Err(e) => println!("驗證錯誤: {:?}", e),
+        Ok(false) => println!("✓ Correct: wrong message was rejected"),
+        Ok(true) => println!("✗ Critical error: wrong message was accepted!"),
+        Err(e) => println!("Verification error: {:?}", e),
     }
 }

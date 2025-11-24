@@ -1,4 +1,4 @@
-/// Falcon-512 簽名實現
+/// Falcon-512 signature implementation
 use crate::error::{PqcError, Result};
 use crate::traits::Signer;
 
@@ -24,22 +24,22 @@ impl Default for FalconSigner {
 
 impl Signer for FalconSigner {
     fn generate_keypair(&mut self) -> Result<()> {
-        // TODO: 實現 Falcon-512 密鑰生成
-        // 使用 pqcrypto-falcon crate
+        // TODO: Implement Falcon-512 key generation
+        // Use pqcrypto-falcon crate
         Err(PqcError::KeyGenerationError(
-            "Falcon 密鑰生成尚未實現".to_string(),
+            "Falcon key generation not yet implemented".to_string(),
         ))
     }
 
     fn sign(&self, _message: &[u8]) -> Result<Vec<u8>> {
-        // TODO: 實現 Falcon-512 簽名
-        Err(PqcError::SigningError("Falcon 簽名尚未實現".to_string()))
+        // TODO: Implement Falcon-512 signing
+        Err(PqcError::SigningError("Falcon signing not yet implemented".to_string()))
     }
 
     fn verify(&self, _message: &[u8], _signature: &[u8]) -> Result<bool> {
-        // TODO: 實現 Falcon-512 驗證
+        // TODO: Implement Falcon-512 verification
         Err(PqcError::VerificationError(
-            "Falcon 驗證尚未實現".to_string(),
+            "Falcon verification not yet implemented".to_string(),
         ))
     }
 

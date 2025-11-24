@@ -1,28 +1,28 @@
 #!/bin/bash
-# 執行單次審計示例
+# Single Audit Execution Example
 
 set -e
 
-echo "🧪 Walrus 審計節點 - 單次審計示例"
+echo "🧪 Walrus Auditor Node - Single Audit Example"
 echo "════════════════════════════════════"
 echo ""
 
-# 檢查 Seal API 是否運行
-echo "1️⃣ 檢查 Seal API 服務..."
+# Check if Seal API is running
+echo "1️⃣ Checking Seal API service..."
 if curl -sf http://localhost:3001/health > /dev/null 2>&1; then
-    echo "   ✅ Seal API 正在運行"
+    echo "   ✅ Seal API is running"
 else
-    echo "   ❌ Seal API 未運行"
-    echo "   請先啟動 Seal API 服務:"
+    echo "   ❌ Seal API is not running"
+    echo "   Please start Seal API service first:"
     echo "   cd ../seal-client && npx tsx seal-api-server.ts"
     exit 1
 fi
 
 echo ""
-echo "2️⃣ 執行審計..."
+echo "2️⃣ Executing audit..."
 echo ""
 
-# 執行審計
+# Execute audit
 cargo run --bin auditor-node -- \
     --blob-id "0xtest123456789abcdef" \
     --seal-api "http://localhost:3001" \
@@ -31,4 +31,4 @@ cargo run --bin auditor-node -- \
     --log-level info
 
 echo ""
-echo "✅ 審計完成！"
+echo "✅ Audit completed!"

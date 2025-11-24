@@ -1,34 +1,34 @@
-# Walrus 審計節點配置示例
+# Walrus Auditor Node Configuration Example
 #
-# 使用方法：
-# 1. 複製此文件為 config.toml
-# 2. 根據實際環境修改配置
-# 3. 運行: cargo run -- --config config.toml --blob-id <BLOB_ID>
+# Usage:
+# 1. Copy this file to config.toml
+# 2. Modify the configuration according to your actual environment
+# 3. Run: cargo run -- --config config.toml --blob-id <BLOB_ID>
 
-# Sui 區塊鏈配置
+# Sui Blockchain Configuration
 sui_rpc_url = "https://fullnode.testnet.sui.io:443"
 
-# Walrus 配置
+# Walrus Configuration
 walrus_aggregator_url = "https://aggregator.walrus-testnet.walrus.space"
 
-# 審計員密鑰路徑
+# Auditor Private Key Path
 auditor_private_key_path = "./keys/auditor.key"
 
-# PQC 密鑰庫路徑（Dilithium3）
+# PQC Keystore Path (Dilithium3)
 pqc_keystore_path = "./keys/pqc_keystore"
 
-# 審計參數
+# Audit Parameters
 min_challenges = 10
 max_challenges = 100
-audit_interval_secs = 3600  # 1 小時
+audit_interval_secs = 3600  # 1 hour
 
-# HTTP 超時設置
+# HTTP Timeout Settings
 http_timeout_secs = 30
 
-# Seal 加密配置
+# Seal Encryption Configuration
 enable_seal_encryption = true
 seal_api_url = "http://localhost:3001"
 
-# 示例：禁用 Seal 加密
+# Example: Disable Seal Encryption
 # enable_seal_encryption = false
 # seal_api_url = ""

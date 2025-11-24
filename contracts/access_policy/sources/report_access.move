@@ -1,15 +1,15 @@
-/// Seal 加密審計報告訪問控制模組
+/// Seal Encrypted Audit Report Access Control Module
 ///
-/// 本模組負責：
-/// 1. 管理審計報告的訪問策略（誰可以解密）
-/// 2. 發行 SealToken（NFT 風格的訪問憑證）
-/// 3. 追蹤訪問歷史和合規性
+/// This module is responsible for:
+/// 1. Managing access policies for audit reports (who can decrypt)
+/// 2. Issuing SealToken (NFT-style access credentials)
+/// 3. Tracking access history and compliance
 ///
-/// 安全模型：
-/// - 報告創建者永遠擁有訪問權限
-/// - 合規官員通過角色授權獲得訪問權限
-/// - SealToken 可轉移（類似 NFT），支持權限委託
-/// - 策略可過期，確保時限性訪問控制
+/// Security Model:
+/// - Report creators always have access rights
+/// - Compliance officers gain access through role authorization
+/// - SealToken is transferable (like NFT), supporting permission delegation
+/// - Policies can expire, ensuring time-limited access control
 module access_policy::report_access {
     use sui::object::{Self, UID, ID};
     use sui::transfer;
@@ -19,109 +19,109 @@ module access_policy::report_access {
     use std::vector;
     use std::option::{Self, Option};
 
-    // ============ 錯誤代碼 ============
+    // ============ Error Codes ============
 
-    /// 策略已過期
+    /// Policy has expired
     const E_POLICY_EXPIRED: u64 = 1;
 
-    /// 未授權的訪問嘗試
+    /// Unauthorized access attempt
     const E_UNAUTHORIZED_ACCESS: u64 = 2;
 
-    /// 無效的訪問類型
+    /// Invalid access type
     const E_INVALID_ACCESS_TYPE: u64 = 3;
 
-    /// 策略創建者不匹配
+    /// Policy creator mismatch
     const E_NOT_POLICY_CREATOR: u64 = 4;
 
-    /// 策略已被撤銷
+    /// Policy has been revoked
     const E_POLICY_REVOKED: u64 = 5;
 
-    /// Token 已過期
+    /// Token has expired
     const E_TOKEN_EXPIRED: u64 = 6;
 
-    /// 報告不存在
+    /// Report not found
     const E_REPORT_NOT_FOUND: u64 = 7;
 
-    // ============ 訪問類型常量 ============
+    // ============ Access Type Constants ============
 
-    /// 讀取權限（僅查看報告）
+    /// Read permission (view report only)
     const ACCESS_READ: u8 = 1;
 
-    /// 審計權限（執行新審計）
+    /// Audit permission (perform new audit)
     const ACCESS_AUDIT: u8 = 2;
 
-    /// 管理權限（修改策略）
+    /// Admin permission (modify policy)
     const ACCESS_ADMIN: u8 = 3;
 
-    // ============ 核心數據結構 ============
+    // ============ Core Data Structures ============
 
-    /// 審計報告訪問策略
+    /// Audit Report Access Policy
     ///
-    /// 每個加密的審計報告都有一個對應的訪問策略，
-    /// 定義誰可以在什麼條件下解密報告
+    /// Each encrypted audit report has a corresponding access policy
+    /// that defines who can decrypt the report under what conditions
     public struct ReportAccessPolicy has key {
         id: UID,
 
-        // === 報告標識 ===
-        report_blob_id: u256,               // Walrus 上加密報告的 Blob ID
-        audit_record_id: ID,                // 對應的鏈上審計記錄 ID
-        creator: address,                   // 報告創建者（審計員）
+        // === Report Identification ===
+        report_blob_id: u256,               // Blob ID of encrypted report on Walrus
+        audit_record_id: ID,                // Corresponding on-chain audit record ID
+        creator: address,                   // Report creator (auditor)
 
-        // === 訪問控制列表 ===
-        allowed_readers: vector<address>,   // 允許讀取的地址列表
-        allowed_auditors: vector<address>,  // 允許審計的地址列表
-        allowed_admins: vector<address>,    // 允許管理的地址列表
+        // === Access Control Lists ===
+        allowed_readers: vector<address>,   // List of addresses allowed to read
+        allowed_auditors: vector<address>,  // List of addresses allowed to audit
+        allowed_admins: vector<address>,    // List of addresses allowed to manage
 
-        // === 時間控制 ===
-        created_at: u64,                    // 策略創建時間（毫秒）
-        expires_at: Option<u64>,            // 過期時間（None = 永不過期）
+        // === Time Control ===
+        created_at: u64,                    // Policy creation time (milliseconds)
+        expires_at: Option<u64>,            // Expiration time (None = never expires)
 
-        // === 策略狀態 ===
-        is_active: bool,                    // 策略是否激活
-        revocation_reason: Option<vector<u8>>, // 撤銷原因（如有）
+        // === Policy Status ===
+        is_active: bool,                    // Whether policy is active
+        revocation_reason: Option<vector<u8>>, // Revocation reason (if any)
 
-        // === 訪問統計 ===
-        total_accesses: u64,                // 總訪問次數
-        last_accessed_at: Option<u64>,     // 最後訪問時間
+        // === Access Statistics ===
+        total_accesses: u64,                // Total number of accesses
+        last_accessed_at: Option<u64>,     // Last access time
     }
 
-    /// SealToken（訪問憑證）
+    /// SealToken (Access Credential)
     ///
-    /// NFT 風格的訪問 Token，持有者可以解密對應的報告
-    /// Token 可轉移，支持訪問權限的委託
+    /// NFT-style access token, holders can decrypt corresponding reports
+    /// Token is transferable, supporting permission delegation
     public struct SealToken has key, store {
         id: UID,
-        policy_id: ID,                      // 關聯的策略 ID
-        report_blob_id: u256,               // 報告 Blob ID
-        holder: address,                    // 當前持有者
-        access_type: u8,                    // 訪問類型（1=讀取, 2=審計, 3=管理）
-        granted_at: u64,                    // 授予時間
-        expires_at: Option<u64>,            // 過期時間（可與策略不同）
-        is_transferable: bool,              // 是否可轉移
+        policy_id: ID,                      // Associated policy ID
+        report_blob_id: u256,               // Report Blob ID
+        holder: address,                    // Current holder
+        access_type: u8,                    // Access type (1=read, 2=audit, 3=admin)
+        granted_at: u64,                    // Grant time
+        expires_at: Option<u64>,            // Expiration time (can differ from policy)
+        is_transferable: bool,              // Whether transferable
     }
 
-    /// 訪問歷史記錄
+    /// Access History Record
     ///
-    /// 記錄每次報告訪問的詳細信息（用於合規審計）
+    /// Records detailed information of each report access (for compliance auditing)
     public struct AccessLog has key {
         id: UID,
-        policy_id: ID,                      // 策略 ID
-        report_blob_id: u256,               // 報告 Blob ID
-        access_records: vector<AccessRecord>, // 訪問記錄列表
+        policy_id: ID,                      // Policy ID
+        report_blob_id: u256,               // Report Blob ID
+        access_records: vector<AccessRecord>, // List of access records
     }
 
-    /// 單次訪問記錄
+    /// Single Access Record
     public struct AccessRecord has store, drop {
-        accessor: address,                  // 訪問者地址
-        access_type: u8,                    // 訪問類型
-        timestamp: u64,                     // 訪問時間
-        token_id: Option<ID>,               // 使用的 Token ID（如有）
-        success: bool,                      // 訪問是否成功
+        accessor: address,                  // Accessor address
+        access_type: u8,                    // Access type
+        timestamp: u64,                     // Access time
+        token_id: Option<ID>,               // Token ID used (if any)
+        success: bool,                      // Whether access was successful
     }
 
-    // ============ 事件定義 ============
+    // ============ Event Definitions ============
 
-    /// 策略創建事件
+    /// Policy Created Event
     public struct PolicyCreated has copy, drop {
         policy_id: ID,
         report_blob_id: u256,
@@ -129,7 +129,7 @@ module access_policy::report_access {
         expires_at: Option<u64>,
     }
 
-    /// Token 授予事件
+    /// Token Granted Event
     public struct TokenGranted has copy, drop {
         token_id: ID,
         policy_id: ID,
@@ -137,7 +137,7 @@ module access_policy::report_access {
         access_type: u8,
     }
 
-    /// 訪問嘗試事件
+    /// Access Attempted Event
     public struct AccessAttempted has copy, drop {
         policy_id: ID,
         accessor: address,
@@ -146,39 +146,39 @@ module access_policy::report_access {
         timestamp: u64,
     }
 
-    /// 策略撤銷事件
+    /// Policy Revoked Event
     public struct PolicyRevoked has copy, drop {
         policy_id: ID,
         revoker: address,
         reason: vector<u8>,
     }
 
-    /// Token 轉移事件
+    /// Token Transferred Event
     public struct TokenTransferred has copy, drop {
         token_id: ID,
         from: address,
         to: address,
     }
 
-    // ============ 初始化函數 ============
+    // ============ Initialization Functions ============
 
-    /// 模組初始化（無全局配置對象）
+    /// Module initialization (no global configuration object)
     fun init(_ctx: &mut TxContext) {
-        // 本模組不需要全局配置，策略按需創建
+        // This module doesn't need global configuration, policies are created on demand
     }
 
-    // ============ 策略管理函數 ============
+    // ============ Policy Management Functions ============
 
-    /// 創建訪問策略
+    /// Create Access Policy
     ///
-    /// 審計員在上傳加密報告到 Walrus 後，創建訪問策略
+    /// Auditor creates access policy after uploading encrypted report to Walrus
     ///
-    /// 參數：
-    /// - report_blob_id: Walrus 上加密報告的 Blob ID
-    /// - audit_record_id: 對應的審計記錄 ID
-    /// - allowed_readers: 初始讀取權限列表
-    /// - allowed_auditors: 初始審計權限列表
-    /// - expires_at_ms: 過期時間（None = 永不過期）
+    /// Parameters:
+    /// - report_blob_id: Blob ID of encrypted report on Walrus
+    /// - audit_record_id: Corresponding audit record ID
+    /// - allowed_readers: Initial list of read permissions
+    /// - allowed_auditors: Initial list of audit permissions
+    /// - expires_at_ms: Expiration time (None = never expires)
     public entry fun create_policy(
         report_blob_id: u256,
         audit_record_id: ID,
@@ -197,7 +197,7 @@ module access_policy::report_access {
             creator,
             allowed_readers,
             allowed_auditors,
-            allowed_admins: vector::singleton(creator), // 創建者默認是管理員
+            allowed_admins: vector::singleton(creator), // Creator is admin by default
             created_at: clock::timestamp_ms(clock),
             expires_at: expires_at_ms,
             is_active: true,
@@ -215,10 +215,10 @@ module access_policy::report_access {
             expires_at: expires_at_ms,
         });
 
-        // 共享策略對象（允許查詢）
+        // Share policy object (allow queries)
         transfer::share_object(policy);
 
-        // 創建訪問歷史對象
+        // Create access history object
         let access_log = AccessLog {
             id: object::new(ctx),
             policy_id,
@@ -228,13 +228,13 @@ module access_policy::report_access {
         transfer::share_object(access_log);
     }
 
-    /// 授予訪問 Token
+    /// Grant Access Token
     ///
-    /// 策略管理員可以為特定地址授予訪問 Token
+    /// Policy admin can grant access token to specific addresses
     ///
-    /// 安全檢查：
-    /// - 調用者必須是策略管理員
-    /// - 策略必須未過期且激活
+    /// Security Checks:
+    /// - Caller must be policy admin
+    /// - Policy must not be expired and must be active
     public entry fun grant_access_token(
         policy: &mut ReportAccessPolicy,
         recipient: address,
@@ -246,22 +246,22 @@ module access_policy::report_access {
     ) {
         let sender = tx_context::sender(ctx);
 
-        // 驗證調用者是管理員或創建者
+        // Verify caller is admin or creator
         assert!(
             sender == policy.creator || vector::contains(&policy.allowed_admins, &sender),
             E_NOT_POLICY_CREATOR
         );
 
-        // 驗證策略未過期
+        // Verify policy has not expired
         assert_policy_valid(policy, clock);
 
-        // 驗證訪問類型有效
+        // Verify access type is valid
         assert!(
             access_type == ACCESS_READ || access_type == ACCESS_AUDIT || access_type == ACCESS_ADMIN,
             E_INVALID_ACCESS_TYPE
         );
 
-        // 創建 Token
+        // Create Token
         let token = SealToken {
             id: object::new(ctx),
             policy_id: object::id(policy),
@@ -275,7 +275,7 @@ module access_policy::report_access {
 
         let token_id = object::id(&token);
 
-        // 同時更新策略的 ACL
+        // Also update policy ACL
         if (access_type == ACCESS_READ) {
             if (!vector::contains(&policy.allowed_readers, &recipient)) {
                 vector::push_back(&mut policy.allowed_readers, recipient);
@@ -297,13 +297,13 @@ module access_policy::report_access {
             access_type,
         });
 
-        // 轉移 Token 給接收者
+        // Transfer Token to recipient
         transfer::transfer(token, recipient);
     }
 
-    /// 撤銷訪問策略
+    /// Revoke Access Policy
     ///
-    /// 創建者可以撤銷策略（例如：報告包含錯誤信息）
+    /// Creator can revoke policy (e.g., report contains erroneous information)
     public entry fun revoke_policy(
         policy: &mut ReportAccessPolicy,
         reason: vector<u8>,
@@ -321,9 +321,9 @@ module access_policy::report_access {
         });
     }
 
-    /// 移除訪問權限
+    /// Remove Access Permission
     ///
-    /// 管理員可以移除特定地址的訪問權限
+    /// Admin can remove access permission for specific addresses
     public entry fun remove_access(
         policy: &mut ReportAccessPolicy,
         target: address,
@@ -341,18 +341,18 @@ module access_policy::report_access {
         } else if (access_type == ACCESS_AUDIT) {
             remove_from_list(&mut policy.allowed_auditors, target);
         } else if (access_type == ACCESS_ADMIN) {
-            // 不能移除創建者的管理權限
+            // Cannot remove creator's admin permission
             if (target != policy.creator) {
                 remove_from_list(&mut policy.allowed_admins, target);
             };
         };
     }
 
-    // ============ Token 管理函數 ============
+    // ============ Token Management Functions ============
 
-    /// 轉移 Token
+    /// Transfer Token
     ///
-    /// Token 持有者可以將 Token 轉移給其他地址（如果 is_transferable = true）
+    /// Token holder can transfer token to another address (if is_transferable = true)
     public entry fun transfer_token(
         token: SealToken,
         recipient: address,
@@ -370,14 +370,14 @@ module access_policy::report_access {
             to: recipient,
         });
 
-        // 更新持有者並轉移
-        // 注意：這裡我們需要銷毀並重建對象，因為 holder 字段需要更新
+        // Update holder and transfer
+        // Note: We transfer the object here; holder field will be updated by ownership transfer
         transfer::transfer(token, recipient);
     }
 
-    /// 銷毀過期 Token
+    /// Burn Expired Token
     ///
-    /// 任何人都可以銷毀已過期的 Token（清理操作）
+    /// Anyone can burn expired tokens (cleanup operation)
     public entry fun burn_expired_token(
         token: SealToken,
         clock: &Clock,
@@ -401,42 +401,42 @@ module access_policy::report_access {
         object::delete(id);
     }
 
-    // ============ Seal Protocol 集成 ============
+    // ============ Seal Protocol Integration ============
 
-    /// Seal 協議入口函數（訪問控制列表模式）
+    /// Seal Protocol Entry Function (Access Control List Mode)
     ///
-    /// 此函數實現 Seal 協議的訪問驗證，遵循「永久訪問控制列表」模式
-    /// （類似 Seal 官方 whitelist.move 範例）。
+    /// This function implements Seal Protocol's access verification, following the "Permanent Access Control List" pattern
+    /// (similar to Seal's official whitelist.move example).
     ///
-    /// 設計決策：
-    /// - 不檢查過期時間（expires_at），因為：
-    ///   1. 審計報告需要永久可追溯（監管合規要求）
-    ///   2. 時間檢查已在應用層 check_access() 中實現（兩階段驗證架構）
-    ///   3. expires_at 是可選的治理工具，非強制業務邏輯
-    /// - 遵循 Seal 官方 Whitelist 模式（參考 github.com/MystenLabs/seal whitelist.move）
+    /// Design Decisions:
+    /// - Does not check expiration time (expires_at), because:
+    ///   1. Audit reports need permanent traceability (regulatory compliance requirements)
+    ///   2. Time checking is already implemented in application layer's check_access() (two-stage verification architecture)
+    ///   3. expires_at is an optional governance tool, not mandatory business logic
+    /// - Follows Seal's official Whitelist pattern (reference: github.com/MystenLabs/seal whitelist.move)
     ///
-    /// 兩階段驗證架構：
-    /// - 階段 1（PTB 驗證）：seal_approve() - 驗證 ACL（由 Key Servers 執行）
-    /// - 階段 2（實際解密）：check_access() - 完整驗證包括時間（由應用執行）
+    /// Two-Stage Verification Architecture:
+    /// - Stage 1 (PTB Verification): seal_approve() - Verify ACL (executed by Key Servers)
+    /// - Stage 2 (Actual Decryption): check_access() - Complete verification including time (executed by application)
     ///
-    /// 參數：
-    /// - id_bytes: 報告 Blob ID 的 BCS 編碼（u256 → vector<u8>，小端序）
-    /// - policy: 訪問策略對象引用
-    /// - ctx: 交易上下文（用於獲取調用者地址）
+    /// Parameters:
+    /// - id_bytes: BCS-encoded report Blob ID (u256 → vector<u8>, little-endian)
+    /// - policy: Access policy object reference
+    /// - ctx: Transaction context (used to get caller address)
     ///
-    /// 驗證邏輯：
-    /// 1. 策略必須激活（is_active = true）
-    /// 2. report_blob_id 必須匹配
-    /// 3. 調用者必須是創建者或在任一訪問列表中（READ/AUDIT/ADMIN）
+    /// Verification Logic:
+    /// 1. Policy must be active (is_active = true)
+    /// 2. report_blob_id must match
+    /// 3. Caller must be creator or in any access list (READ/AUDIT/ADMIN)
     ///
-    /// 錯誤代碼：
-    /// - E_UNAUTHORIZED_ACCESS: 調用者沒有訪問權限
-    /// - E_POLICY_REVOKED: 策略已被撤銷
-    /// - E_REPORT_NOT_FOUND: 報告 ID 不匹配
+    /// Error Codes:
+    /// - E_UNAUTHORIZED_ACCESS: Caller has no access permission
+    /// - E_POLICY_REVOKED: Policy has been revoked
+    /// - E_REPORT_NOT_FOUND: Report ID mismatch
     ///
-    /// 參考：
-    /// - Seal 官方文檔: https://seal-docs.wal.app/
-    /// - Whitelist 範例: github.com/MystenLabs/seal/move/patterns/sources/whitelist.move
+    /// References:
+    /// - Seal Official Documentation: https://seal-docs.wal.app/
+    /// - Whitelist Example: github.com/MystenLabs/seal/move/patterns/sources/whitelist.move
     public entry fun seal_approve(
         id_bytes: vector<u8>,
         policy: &ReportAccessPolicy,
@@ -444,63 +444,63 @@ module access_policy::report_access {
     ) {
         let sender = tx_context::sender(ctx);
 
-        // 驗證策略激活狀態
+        // Verify policy is active
         assert!(policy.is_active, E_POLICY_REVOKED);
 
-        // === 步驟 1: 解析報告 ID ===
-        // 將 BCS 編碼的 bytes 轉換為 u256（Sui Move 使用小端序）
+        // === Step 1: Parse Report ID ===
+        // Convert BCS-encoded bytes to u256 (Sui Move uses little-endian)
         let report_blob_id = bytes_to_u256(id_bytes);
 
-        // === 步驟 2: 驗證報告 ID 匹配 ===
-        // 確保請求的報告 ID 與策略中記錄的一致（防止訪問錯誤報告）
+        // === Step 2: Verify Report ID Match ===
+        // Ensure requested report ID matches the one recorded in policy (prevent accessing wrong report)
         assert!(report_blob_id == policy.report_blob_id, E_REPORT_NOT_FOUND);
 
-        // === 步驟 3: 訪問控制列表（ACL）驗證 ===
-        // 注意：此處不檢查 expires_at，遵循 Whitelist 模式
-        // 時間驗證在應用層的 check_access() 中執行
+        // === Step 3: Access Control List (ACL) Verification ===
+        // Note: expires_at is not checked here, following Whitelist pattern
+        // Time verification is performed in application layer's check_access()
 
-        // 創建者永遠有權限（審計員可以查看自己的報告）
+        // Creator always has permission (auditor can view their own reports)
         if (sender == policy.creator) {
             return
         };
 
-        // 檢查調用者是否在任一訪問列表中
-        // 允許三種權限類型：READ（讀取）、AUDIT（審計）、ADMIN（管理）
+        // Check if caller is in any access list
+        // Three permission types are allowed: READ, AUDIT, ADMIN
         let has_read = vector::contains(&policy.allowed_readers, &sender);
         let has_audit = vector::contains(&policy.allowed_auditors, &sender);
         let has_admin = vector::contains(&policy.allowed_admins, &sender);
 
-        // 至少需要一種權限才能通過驗證
+        // At least one permission is required to pass verification
         assert!(
             has_read || has_audit || has_admin,
             E_UNAUTHORIZED_ACCESS
         );
 
-        // === 驗證通過 ===
-        // Seal Key Servers 會驗證此 PTB 調用成功，並發放解密密鑰
+        // === Verification Passed ===
+        // Seal Key Servers will verify this PTB call succeeded and issue decryption keys
     }
 
-    /// 將 BCS 編碼的 vector<u8> 轉換為 u256（小端序）
+    /// Convert BCS-encoded vector<u8> to u256 (little-endian)
     ///
-    /// Sui Move 的 u256 使用小端序（Little-Endian）編碼，與大多數現代系統一致。
+    /// Sui Move's u256 uses little-endian encoding, consistent with most modern systems.
     ///
-    /// 算法：
-    /// - 將每個字節左移對應位數（第 i 個字節左移 i*8 位）
-    /// - 累加所有字節得到最終結果
+    /// Algorithm:
+    /// - Left-shift each byte by corresponding bit position (i-th byte shifted by i*8 bits)
+    /// - Accumulate all bytes to get final result
     ///
-    /// 限制：
-    /// - 最多接受 32 字節（256 bits）
-    /// - 超過 32 字節會觸發 E_INVALID_ACCESS_TYPE 錯誤
+    /// Limitations:
+    /// - Accepts at most 32 bytes (256 bits)
+    /// - More than 32 bytes triggers E_INVALID_ACCESS_TYPE error
     ///
-    /// 示例：
-    /// - bytes = [0x01, 0x02] → result = 0x0201 (小端序)
+    /// Examples:
+    /// - bytes = [0x01, 0x02] → result = 0x0201 (little-endian)
     /// - bytes = [0xFF, 0x00, 0x00, 0x01] → result = 0x010000FF
     ///
-    /// 參數：
-    /// - bytes: BCS 編碼的字節數組（來自 Seal SDK 的 id 參數）
+    /// Parameters:
+    /// - bytes: BCS-encoded byte array (from Seal SDK's id parameter)
     ///
-    /// 返回：
-    /// - 解析後的 u256 報告 Blob ID
+    /// Returns:
+    /// - Parsed u256 report Blob ID
     fun bytes_to_u256(bytes: vector<u8>): u256 {
         let len = vector::length(&bytes);
         assert!(len <= 32, E_INVALID_ACCESS_TYPE); // 32 bytes = 256 bits
@@ -508,7 +508,7 @@ module access_policy::report_access {
         let mut result: u256 = 0;
         let mut i = 0;
 
-        // 小端序組裝：低位字節在前，高位字節在後
+        // Little-endian assembly: low bytes first, high bytes last
         while (i < len) {
             let byte = (*vector::borrow(&bytes, i) as u256);
             result = result + (byte << ((i * 8) as u8));
@@ -518,25 +518,25 @@ module access_policy::report_access {
         result
     }
 
-    // ============ 訪問驗證函數 ============
+    // ============ Access Verification Functions ============
 
-    /// 檢查訪問權限
+    /// Check Access Permission
     ///
-    /// 驗證給定地址是否有權訪問報告
+    /// Verify if given address has permission to access report
     ///
-    /// 返回：(has_access, reason)
+    /// Returns: (has_access, reason)
     public fun check_access(
         policy: &ReportAccessPolicy,
         accessor: address,
         access_type: u8,
         clock: &Clock,
     ): bool {
-        // 檢查策略是否激活
+        // Check if policy is active
         if (!policy.is_active) {
             return false
         };
 
-        // 檢查策略是否過期
+        // Check if policy has expired
         if (option::is_some(&policy.expires_at)) {
             let expires_at = *option::borrow(&policy.expires_at);
             if (clock::timestamp_ms(clock) > expires_at) {
@@ -544,12 +544,12 @@ module access_policy::report_access {
             };
         };
 
-        // 創建者永遠有訪問權限
+        // Creator always has access permission
         if (accessor == policy.creator) {
             return true
         };
 
-        // 檢查 ACL
+        // Check ACL
         if (access_type == ACCESS_READ) {
             vector::contains(&policy.allowed_readers, &accessor)
         } else if (access_type == ACCESS_AUDIT) {
@@ -561,9 +561,9 @@ module access_policy::report_access {
         }
     }
 
-    /// 記錄訪問
+    /// Log Access
     ///
-    /// 在訪問報告時記錄訪問歷史（合規要求）
+    /// Record access history when accessing report (compliance requirement)
     public entry fun log_access(
         policy: &mut ReportAccessPolicy,
         access_log: &mut AccessLog,
@@ -577,13 +577,13 @@ module access_policy::report_access {
 
         let success = check_access(policy, accessor, access_type, clock);
 
-        // 更新策略統計
+        // Update policy statistics
         if (success) {
             policy.total_accesses = policy.total_accesses + 1;
             policy.last_accessed_at = option::some(timestamp);
         };
 
-        // 添加訪問記錄
+        // Add access record
         let record = AccessRecord {
             accessor,
             access_type,
@@ -593,7 +593,7 @@ module access_policy::report_access {
         };
         vector::push_back(&mut access_log.access_records, record);
 
-        // 發出事件
+        // Emit event
         event::emit(AccessAttempted {
             policy_id: object::id(policy),
             accessor,
@@ -603,34 +603,34 @@ module access_policy::report_access {
         });
     }
 
-    // ============ 查詢函數 ============
+    // ============ Query Functions ============
 
-    /// 獲取報告 Blob ID
+    /// Get report Blob ID
     public fun get_report_blob_id(policy: &ReportAccessPolicy): u256 {
         policy.report_blob_id
     }
 
-    /// 獲取策略創建者
+    /// Get policy creator
     public fun get_creator(policy: &ReportAccessPolicy): address {
         policy.creator
     }
 
-    /// 檢查策略是否激活
+    /// Check if policy is active
     public fun is_policy_active(policy: &ReportAccessPolicy): bool {
         policy.is_active
     }
 
-    /// 獲取訪問統計
+    /// Get access statistics
     public fun get_access_stats(policy: &ReportAccessPolicy): (u64, Option<u64>) {
         (policy.total_accesses, policy.last_accessed_at)
     }
 
-    /// 獲取 Token 信息
+    /// Get Token information
     public fun get_token_info(token: &SealToken): (ID, u256, address, u8) {
         (token.policy_id, token.report_blob_id, token.holder, token.access_type)
     }
 
-    /// 檢查 Token 是否過期
+    /// Check if Token is expired
     public fun is_token_expired(token: &SealToken, clock: &Clock): bool {
         if (option::is_some(&token.expires_at)) {
             let expires_at = *option::borrow(&token.expires_at);
@@ -640,9 +640,9 @@ module access_policy::report_access {
         }
     }
 
-    // ============ 內部輔助函數 ============
+    // ============ Internal Helper Functions ============
 
-    /// 驗證策略有效性
+    /// Verify policy validity
     fun assert_policy_valid(policy: &ReportAccessPolicy, clock: &Clock) {
         assert!(policy.is_active, E_POLICY_REVOKED);
 
@@ -652,7 +652,7 @@ module access_policy::report_access {
         };
     }
 
-    /// 從列表中移除地址
+    /// Remove address from list
     fun remove_from_list(list: &mut vector<address>, target: address) {
         let (found, index) = vector::index_of(list, &target);
         if (found) {
@@ -660,7 +660,7 @@ module access_policy::report_access {
         };
     }
 
-    // ============ 測試輔助函數 ============
+    // ============ Test Helper Functions ============
 
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext) {

@@ -1,22 +1,22 @@
-//! 後量子密碼學簽名庫
+//! Post-quantum cryptography signature library
 //!
-//! 提供 Dilithium3 和 Falcon-512 兩種 NIST 標準化的後量子數字簽名方案。
+//! Provides two NIST-standardized post-quantum digital signature schemes: Dilithium3 and Falcon-512.
 //!
-//! # 快速開始
+//! # Quick Start
 //!
 //! ```rust
 //! use pqc_signer::dilithium::Dilithium3Signer;
 //! use pqc_signer::traits::Signer;
 //!
-//! // 生成密鑰對
+//! // Generate keypair
 //! let mut signer = Dilithium3Signer::new();
 //! signer.generate_keypair().unwrap();
 //!
-//! // 簽名消息
+//! // Sign message
 //! let message = b"Audit report data";
 //! let signature = signer.sign(message).unwrap();
 //!
-//! // 驗證簽名
+//! // Verify signature
 //! let is_valid = signer.verify(message, &signature).unwrap();
 //! assert!(is_valid);
 //! ```

@@ -1,16 +1,16 @@
-//! Walrus 去中心化存儲完整性審計節點
+//! Walrus Decentralized Storage Integrity Auditor Node
 //!
-//! 本 crate 實現了一個完整的審計節點，負責:
-//! 1. 對 Walrus 存儲節點執行挑戰-響應驗證
-//! 2. 使用默克爾證明驗證數據完整性
-//! 3. 生成帶 PQC 簽名的審計報告
-//! 4. 提交審計結果到 Sui 區塊鏈
+//! This crate implements a complete auditor node responsible for:
+//! 1. Executing challenge-response verification against Walrus storage nodes
+//! 2. Verifying data integrity using Merkle proofs
+//! 3. Generating audit reports with PQC signatures
+//! 4. Submitting audit results to Sui blockchain
 //!
-//! # 架構
+//! # Architecture
 //!
 //! ```text
 //! ┌──────────────┐
-//! │   Auditor    │  ← 核心審計邏輯
+//! │   Auditor    │  ← Core audit logic
 //! └──────┬───────┘
 //!        │
 //!   ┌────┴────┬─────────┬──────────┬──────────┐
@@ -20,7 +20,7 @@
 //!           Client
 //! ```
 //!
-//! # 示例用法
+//! # Example Usage
 //!
 //! ```no_run
 //! use auditor_node::{Auditor, config::load_config};
@@ -37,13 +37,13 @@
 //! }
 //! ```
 
-// 公開模塊
-pub mod audit_report; // PQC 簽名的審計報告
+// Public modules
+pub mod audit_report; // PQC-signed audit reports
 pub mod auditor;
 pub mod config;
 pub mod crypto;
 pub mod error;
-pub mod integrity; // 應用層完整性驗證
+pub mod integrity; // Application-layer integrity verification
 pub mod keystore;
 pub mod report;
 pub mod seal_client;
@@ -51,7 +51,7 @@ pub mod storage_node_client;
 pub mod sui_client;
 pub mod types;
 
-// Re-export 常用類型
+// Re-export commonly used types
 pub use auditor::Auditor;
 pub use error::{AuditorError, Result};
 pub use types::{AuditReport, AuditorConfig, BlobMetadata};

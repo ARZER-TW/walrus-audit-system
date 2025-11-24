@@ -2,13 +2,13 @@ import './App.css'
 import { SealDecryption } from './components/SealDecryption'
 
 /**
- * Walrus 審計系統 - Seal 解密前端
+ * Walrus Audit System - Seal Decryption Frontend
  *
- * 整合了：
- * - Sui 錢包連接（@mysten/dapp-kit）
- * - Session Key 簽名授權
- * - Seal 加密報告解密
- * - 訪問控制驗證
+ * Integrates:
+ * - Sui Wallet Connection (@mysten/dapp-kit)
+ * - Session Key Signature Authorization
+ * - Seal Encrypted Report Decryption
+ * - Access Control Verification
  */
 function App() {
   return (
@@ -20,9 +20,9 @@ function App() {
         boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
       }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <h1 style={{ margin: 0 }}>Walrus 審計系統</h1>
+          <h1 style={{ margin: 0 }}>Walrus Audit System</h1>
           <p style={{ margin: '5px 0 0 0', opacity: 0.9 }}>
-            基於 Seal 的去中心化存儲完整性審計與訪問控制系統
+            Decentralized Storage Integrity Auditing and Access Control System based on Seal
           </p>
         </div>
       </header>
@@ -39,7 +39,7 @@ function App() {
         borderTop: '1px solid #ddd'
       }}>
         <p>
-          <strong>技術堆疊:</strong> Sui Move + Rust + PQC (Dilithium3) + Seal (IBE Threshold Encryption) + Walrus
+          <strong>Tech Stack:</strong> Sui Move + Rust + PQC (Dilithium3) + Seal (IBE Threshold Encryption) + Walrus
         </p>
         <p style={{ fontSize: '14px', marginTop: '10px' }}>
           Hackathon Demo - Walrus Haulout (Data Security & Privacy Track)

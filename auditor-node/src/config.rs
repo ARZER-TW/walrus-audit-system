@@ -1,6 +1,6 @@
-//! 配置管理模塊
+//! Configuration management module
 //!
-//! 負責加載和驗證審計節點配置
+//! Responsible for loading and validating auditor node configuration
 
 use crate::error::{AuditorError, Result};
 use crate::types::AuditorConfig;
@@ -8,16 +8,16 @@ use config::{Config, ConfigError, File};
 use serde::Deserialize;
 use std::path::Path;
 
-/// 從配置文件加載審計員配置
+/// Load auditor configuration from file
 ///
-/// # 參數
-/// - `config_path`: 配置文件路徑（支持 TOML、JSON、YAML）
+/// # Parameters
+/// - `config_path`: Configuration file path (supports TOML, JSON, YAML)
 ///
-/// # 返回
-/// - `Ok(AuditorConfig)`: 成功加載的配置
-/// - `Err(AuditorError)`: 配置文件格式錯誤或缺少必要字段
+/// # Returns
+/// - `Ok(AuditorConfig)`: Successfully loaded configuration
+/// - `Err(AuditorError)`: Config file format error or missing required fields
 ///
-/// # 示例
+/// # Example
 /// ```no_run
 /// use auditor_node::config::load_config;
 ///
@@ -39,10 +39,10 @@ pub fn load_config<P: AsRef<Path>>(config_path: P) -> Result<AuditorConfig> {
     Ok(auditor_config)
 }
 
-/// 從環境變量加載配置（用於容器化部署）
+/// Load configuration from environment variables (for containerized deployment)
 ///
-/// 環境變量前綴: `AUDITOR_`
-/// 示例: `AUDITOR_SUI_RPC_URL`, `AUDITOR_MIN_CHALLENGES`
+/// Environment variable prefix: `AUDITOR_`
+/// Example: `AUDITOR_SUI_RPC_URL`, `AUDITOR_MIN_CHALLENGES`
 pub fn load_config_from_env() -> Result<AuditorConfig> {
     let config = Config::builder()
         .add_source(config::Environment::with_prefix("AUDITOR"))
@@ -58,14 +58,14 @@ pub fn load_config_from_env() -> Result<AuditorConfig> {
     Ok(auditor_config)
 }
 
-/// 驗證配置的有效性
+/// Validate configuration validity
 ///
-/// 檢查:
-/// - 挑戰次數範圍是否合理
-/// - URL 格式是否正確
-/// - 文件路徑是否存在
+/// Checks:
+/// - Challenge count range is reasonable
+/// - URL format is correct
+/// - File paths exist
 fn validate_config(config: &AuditorConfig) -> Result<()> {
-    // 驗證挑戰次數
+    // Validate challenge count
     if config.min_challenges == 0 {
         return Err(AuditorError::Config(
             "min_challenges must be greater than 0".to_string(),
@@ -78,7 +78,7 @@ fn validate_config(config: &AuditorConfig) -> Result<()> {
         ));
     }
 
-    // 驗證 URL 格式
+    // Validate URL format
     if !config.sui_rpc_url.starts_with("http://") && !config.sui_rpc_url.starts_with("https://") {
         return Err(AuditorError::Config(format!(
             "Invalid Sui RPC URL: {}",
@@ -95,7 +95,7 @@ fn validate_config(config: &AuditorConfig) -> Result<()> {
         )));
     }
 
-    // 驗證 Seal 配置
+    // Validate Seal configuration
     if config.enable_seal_encryption && config.seal_api_url.is_none() {
         return Err(AuditorError::Config(
             "Seal encryption enabled but seal_api_url not provided".to_string(),

@@ -7,12 +7,12 @@ import { getFullnodeUrl } from '@mysten/sui/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import '@mysten/dapp-kit/dist/index.css'
 
-// Sui 網絡配置（使用 Testnet）
+// Sui Network Configuration (using Testnet)
 const networks = {
   testnet: { url: getFullnodeUrl('testnet') }
 }
 
-// React Query 客戶端
+// React Query Client
 const queryClient = new QueryClient()
 
 createRoot(document.getElementById('root')!).render(

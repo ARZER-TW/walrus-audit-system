@@ -1,7 +1,7 @@
 {
   "name": "seal-client",
   "version": "0.1.0",
-  "description": "Walrus Seal 客戶端封裝 - 用於去中心化存儲完整性審計系統",
+  "description": "Walrus Seal Client Wrapper - For Decentralized Storage Integrity Audit System",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {

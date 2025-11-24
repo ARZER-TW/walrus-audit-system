@@ -1,20 +1,20 @@
-/// 後量子簽名統一接口
+/// Unified interface for post-quantum signatures
 use crate::error::Result;
 
-/// 簽名者特徵
+/// Signer trait
 pub trait Signer {
-    /// 生成密鑰對
+    /// Generate keypair
     fn generate_keypair(&mut self) -> Result<()>;
 
-    /// 對消息簽名
+    /// Sign message
     fn sign(&self, message: &[u8]) -> Result<Vec<u8>>;
 
-    /// 驗證簽名
+    /// Verify signature
     fn verify(&self, message: &[u8], signature: &[u8]) -> Result<bool>;
 
-    /// 獲取公鑰
+    /// Get public key
     fn public_key(&self) -> &[u8];
 
-    /// 算法名稱
+    /// Algorithm name
     fn algorithm_name(&self) -> &str;
 }
